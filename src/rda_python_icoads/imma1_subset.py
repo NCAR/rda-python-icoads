@@ -138,9 +138,9 @@ def main():
    if fidx > 0: rstr += "-" + PGFILE['wfile']
 
    if fidx:
-      process_subset_file(ridx, fidx, rstr)
+      process_subset_file(ridx, fidx, rdir, rstr)
    else:
-      process_subset_request(ridx, rstr)
+      process_subset_request(ridx, rdir, rstr)
 
    PgLOG.cmdlog()
    sys.exit(0)
@@ -395,7 +395,7 @@ def set_full_attm_info(aname, anames, tcodes, avars, aprecs):
 #
 # process a validated subset request
 #
-def process_subset_request(ridx, rstr):
+def process_subset_request(ridx, rdir, rstr):
 
    ptcnt = PGRQST['ptcount']
    if ptcnt > 0 and check_request_built(ridx, ptcnt, rstr) != 1: return
@@ -422,7 +422,7 @@ def process_subset_request(ridx, rstr):
 #
 # process a validated subset request file
 #
-def process_subset_file(ridx, fidx, rstr):
+def process_subset_file(ridx, fidx, ridr, rstr):
 
    if PGFILE['status'] == 'O':
       PgLOG.pglog(rstr + ': Request File is built already', PgLOG.LOGWRN)
@@ -432,7 +432,6 @@ def process_subset_file(ridx, fidx, rstr):
    get_subset_info(rstr)
    set_var_info()
    cinfo = PGFILE['cmd_detail']
-   fname = PGFILE['wfile']
    tidx = 0
    dates = []
    for line in cinfo.split("&"):
@@ -448,7 +447,7 @@ def process_subset_file(ridx, fidx, rstr):
    if not (tidx and dates):
       PgLOG.pglog(rstr + ': Miss tidx or date range to build request', PgLOG.LOGWRN)
 
-   subset_table_index(fd, tidx, dates[0], dates[1])
+   subset_table_index(PGFILE['wfile'], tidx, dates[0], dates[1])
 
 #
 # build range dates for subsetting

@@ -411,7 +411,7 @@ def identify_attm_name(line):
 def cache_field_info(aname, var, uidopt = 0):
 
    global FIELDINFO, LEADUID
-   if imma not in IMMAS: PgLOG.pglog("{}: Unkown attm name provided to fill field {}".format(aname, var), PgLOG.LGEREX)
+   if aname not in IMMAS: PgLOG.pglog("{}: Unkown attm name provided to fill field {}".format(aname, var), PgLOG.LGEREX)
    imma = IMMAS[aname]
    attm = imma[3]
    if var not in attm: PgLOG.pglog("{}: Field name not in attm {}".format(var, aname), PgLOG.LGEREX)
@@ -992,7 +992,7 @@ def get_attm_line(aname, atable, iidx, pgrec):
 #
 # get the attm line for the multiple attms of current iidx
 #
-def get_multipe_attm_line(aname, atable, iidx):
+def get_multiple_attm_line(aname, atable, iidx):
 
    pgrecs = PgDBI.pgmget(atable, "*", "iidx = {} ORDER BY lidx".format(iidx), PgLOG.LGEREX)
    icnt = (len(pgrecs['lidx']) if pgrecs else 0)
