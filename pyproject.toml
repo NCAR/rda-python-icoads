@@ -5,12 +5,12 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rda_python_template"
-version = "1.0.0"
+name = "rda_python_icoads"
+version = "1.0.1"
 authors = [
   { name="Zaihua Ji", email="zji@ucar.edu" },
 ]
-description = "RDA Python code template to create new and modify existing other RDA python packages"
+description = "RDA python package to manage RDA ICOADS datasets"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
@@ -30,10 +30,10 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"rda_python_tmplate" = ["hello_world.usg"]
+"rda_python_icoads" = ["README_R3.0_Subset.html", "rdimma1_csv.f"]
 
 [project.urls]
-"Homepage" = "https://github.com/NCAR/rda-python-template"
+"Homepage" = "https://github.com/NCAR/rda-python-icoads"
 
 [project.scripts]
-hello_world = "rda_python_template.hello_world:main"
+imma1_subset = "rda_python_icoads.imma1_subset:main"

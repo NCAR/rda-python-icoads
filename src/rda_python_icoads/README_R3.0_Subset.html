@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<!--
+     Title : README_R3.0_Subset.html
+    Author : Zaihua Ji,  zji@ucar.edu
+      Date : 10/27/2004
+             2025-02-25 transferred to package rda_python_icoads from
+             https://github.com/NCAR/rda-icoads.git
+   Purpose : HTML email template file with placehold keys to be replaced for
+             ICOADS R3.0 IMMA1 subset
+
+    Github : https://github.com/NCAR/rda-python-icoads.git
+-->
+<head>
+<title>README: ICOADS Release 3 Observations</title>
+
+<style type="text/css">
+.tab { margin-left: 20px; }
+</style>
+
+</head>
+<body>
+
+<h2>README: Subset of ICOADS Release 3 Observations</h2>
+__CURDATE__
+
+<p>The data provided are extracted from archived files in International Maritime
+Meteorological Archive Version 1 (IMMA1) format and presented in Comma
+Separated Value (CSV) ASCII text format files.  The CSV structure can be
+imported, displayed, and manipulated in spreadsheet software (e.g. Microsoft
+XCEL) or read with codes in other programming languages. If you wish to convert from
+.CSV format to fixed length ASCII records or read .CSV into a FOTRAN program see
+the included file named rdmma1_csv.f</p>
+
+<p>The parameter naming convention used in the CSV formatted output
+are the same as described in the IMMA1 documentation, e.g. <i>YR, MO, DY, HR,
+LAT,</i> and <i>LON</i> represent year, month, day, hour in UTC and latitude north
+and longitude east. Some data values in the IMMA1 format are in scaled representation,
+e.g <i>SST</i> = 24.1<i>&deg;C</i> is represented as 241.  All data values in the CSV
+formatted output have been converted to be full true values with correct physical
+units. As another example, a <i>LON</i> in IMMA1 that is scaled to be 16045 is
+un-scaled to <i>LON</i> = 160.45<i>&deg;E</i> in the CSV formatted output.</p>
+
+<p>The detailed descriptions of all parameters and codes are available in these
+long and short version documents.</p>
+
+<ul>
+  <li><a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0.2-imma1.pdf">R3.0.2-imma1.pdf</a> - Complete IMMA1 format description</li>
+  <li><a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0.2-imma1_short.pdf">R3.0.2-imma1_short.pdf</a> - Brief IMMA1 format description</li>
+</ul>
+
+<hr>
+
+<h3>Your data citation for American Geophysical Union (AGU) publications is:</h3>
+
+<p class= "tab">
+"National Centers for Environmental Information/NESDIS/NOAA/U.S. Department of
+Commerce, Research Data Archive/Computational and Information Systems
+Laboratory/National Center for Atmospheric Research/University Corporation
+for Atmospheric Research, Earth System Research Laboratory/NOAA/U.S.
+Department of Commerce, Cooperative Institute for Research in Environmental
+Sciences/University of Colorado, National Oceanography Centre/Natural
+Environment Research Council/United Kingdom, Met Office/Ministry of
+Defence/United Kingdom, Deutscher Wetterdienst (German Meteorological
+Service)/Germany, Department of Atmospheric Science/University of Washington,
+and Center for Ocean-Atmospheric Prediction Studies/Florida State University
+(2016), International Comprehensive Ocean-Atmosphere Data Set (ICOADS)
+Release 3, Individual Observations, http://dx.doi.org/10.5065/D6ZS2TR3,
+Research Data Archive at the National Center for Atmospheric Research,
+Computational and Information Systems Laboratory, Boulder, Colo. (Updated
+monthly.) Accessed __ACCDATE__."
+</p>
+
+<p>Citation styles for other publications (AMS, ESIP, GDJ, DataCite) and input for
+citation management tools are at: <a href="https://rda.ucar.edu/datasets/d548000/">ICOADS Release 3 Home Page</a></p>
+<hr>
+<h3>CSV File Format Description</h3>
+<ul>
+<li>The first data row is an ordered list of parameter/variable names. One name for each
+column of data provided.
+<ul><li>E.g. <i>YR,MO,DY,HR,LAT,LON,...,SST,...</i></li></ul>
+</li>
+<li>Date/time and geographical location are provided for every record and are positioned in the first columns.
+<ul><li>E.g. 2005,09,25,14.25,-15.67,250.89,...,23.4,...</li></ul>
+</li>
+<li>Missing parameters/variables are presented as two successive commas, without space between them.</li>
+</ul>
+
+<hr>
+<h3>Your data request details for user name, temporal range, spatial domain, and number of records:</h3>
+
+<ul>  
+<li>User Name: __USER__</li>
+<li>Temporal Range: __DATES__</li>
+<li>Latitude Limits (+<i>&deg;N</i>, -<i>&deg;S</i>): __LATS__</li>
+<li>Longitude Limits (+<i>&deg;E</i> only): __LONS__</li>
+<li>Number of Records: __RECS__</li>
+</ul>
+
+<h3>Your data request details for the required selections</h3>
+<ul>
+<li>Parameters/Variables from IMMA1 <i>Core</i>, <a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0.2-imma1.pdf#page=33">Table C0, page 33 of R3.0.2-imma1_short.pdf</a>
+<ul><li><i>__C0LIST__</i></li></ul></li>
+<li>P/V <i>Icoads</i>, <a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0.2-imma1.pdf#page=34">Table C1, page 34</a>
+<ul><li><i>__C1LIST__</i></li></ul></li>
+<li>P/V <i>Uida</i>, <a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0.2-imma1.pdf#page=45">Table C98, page 45</a>,
+this unique record tracking metadata is default on all records
+<ul><li><i>UID,RN1,RN2,RN3,RSA,IRF</i></li></ul></li>
+</ul>
+
+__OPTATTMS__
+
+<hr>
+<h3>Your data request details for data flag and QC application</h3>
+<dl>
+<dt>Details at: <a href="https://rda.ucar.edu/OS/web/datasets/d548000/docs/R3.0-stat_trim.pdf">R3.0-stat_trim.pdf</a></dt>
+<dt>Option settings used:</dt>
+<dd><table>
+<tr><th>opdn</th><th>oppt</th><th>opse</th><th>opcq</th><th>optf</th><th>op11</th></tr>
+<tr align="center"><td>__FLTLIST__</td></tr>
+</table></dd>
+</dl>
+
+<dl style="list-style-type:none">
+<dt>opdn: day/night/all data selection</dt>
+<dd>0=all, 1=night, 2=day</dd>
+<dt>oppt: platform type selection</dt>
+<dd>0=ship (standard), 1=all (enhanced)</dd>
+<dt>opse: source exclusion selection</dt>
+<dd>0=apply, 1=ignore</dd>
+<dt>opcq: composite qc flag selection</dt>
+<dd>0=apply, 1=ignore</dd>
+<dt>optf: trimming flag selection</dt>
+<dd>
+0=trimming: reject outside 2.8 sigma<br>
+1=trimming: standard (reject outside 3.5 sigma)<br>
+2=trimming: enhanced (reject outside 4.5 sigma)<br>
+3=trimming: untrimmed (trimming flags not checked and op11 has no effect)</dd>
+<dt>op11: Trimming flag 11 selection:</dt>
+<dd>Reject or use OSD drifting buoy data (<i>SST/SLP</i> only) from areas where
+trimming was NOT set because of missing climatologies.  This allows a
+special pass through for OSD data.</dd>
+</dl>
+<p>
+NOTE: The computation of standard and enhanced processing statistical products
+by the ICOADS project uses the following settings.</p>
+<table>
+<tr><th>Option settings:</th><th>opdn</th><th>oppt</th><th>opse</th><th>opcq</th><th>optf</th><th>op11</th></tr>
+<tr align="center"><td>standard MSG:</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+<tr align="center"><td>enhanced MSG:</td><td>0</td><td>1</td><td>0</td><td>0</td><td>2</td><td>1</td></tr>
+</table>
+<hr>
+</body>
+</html>
