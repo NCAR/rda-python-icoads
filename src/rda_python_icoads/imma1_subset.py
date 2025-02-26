@@ -422,7 +422,7 @@ def process_subset_request(ridx, rdir, rstr):
 #
 # process a validated subset request file
 #
-def process_subset_file(ridx, fidx, ridr, rstr):
+def process_subset_file(ridx, fidx, rdir, rstr):
 
    if PGFILE['status'] == 'O':
       PgLOG.pglog(rstr + ': Request File is built already', PgLOG.LOGWRN)
@@ -640,7 +640,7 @@ def subset_table_index(fname, tidx, bdate, edate):
       build_table_file(fd, tidx, bdate, pdate, atables)
       bdate = PgUtil.adddate(pdate, 0, 0, 1)
 
-   df.close()
+   fd.close()
   
 #
 # build the final subset files
