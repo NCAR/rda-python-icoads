@@ -408,13 +408,13 @@ def process_subset_request(ridx, rdir, rstr):
    else:
       tcnt = get_table_info(PVALS['dates'])
       for i in range(tcnt):
-         bdate = PVALS['edate'][i]
+         bdate = PVALS['bdate'][i]
          edate = PVALS['edate'][i]
          tidx = PVALS['tidx'][i]
          pgrec = {}
          pgrec['data_format'] = 'ASCII'
          pgrec['disp_order'] = i+1
-         pgrec['command'] = PVALS['pgcmd'] + " -f -FI"
+         pgrec['command'] = pgcmd + " -f -FI"
          pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
          fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate, edate)
          PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
@@ -649,7 +649,7 @@ def build_final_files(ridx, rstr):
 
    PgDBI.dssdb_scname()
 
-   fcnt = PgDBI.pghet('wfrqst', '', "rindex = {} AND type = 'D'".format(ridx))
+   fcnt = PgDBI.pgget('wfrqst', '', "rindex = {} AND type = 'D'".format(ridx))
    fname = write_readme()
    pgrec = {'status' : 'O', 'type' : 'O', 'data_format' : 'PDF'}
    fcnt += 1
