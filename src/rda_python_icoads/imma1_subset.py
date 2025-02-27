@@ -130,7 +130,9 @@ def main():
    PgLOG.cmdlog("{} {}".format(pgcmd, ' '.join(argv)))
    PgDBI.dssdb_scname()
    if fidx:
-      PGFILE = PgDBI.pgget('wfrqst', '*', "findex = {}".format(fidx), PgLOG.LGEREX)
+      fcnd = "findex = {}".format(fidx)
+      PGFILE = PgDBI.pgget('wfrqst', '*', fcnd, PgLOG.LGEREX)
+      if not PGFILE: PgLOG.pglog(fcnd + ": Request File Not in RDADB", PgLOG.LGEREX)
       if ridx == 0: ridx = PGFILE['rindex']
    PGRQST = PgSubset.valid_subset_request(ridx, rdir, IDSID, PgLOG.LGWNEX)
    if not rdir: rdir = PgLOG.join_paths(PgLOG.PGLOG['RQSTHOME'], PGRQST['rqstid'])
@@ -398,11 +400,15 @@ def set_full_attm_info(aname, anames, tcodes, avars, aprecs):
 def process_subset_request(ridx, rdir, rstr):
 
    ptcnt = PGRQST['ptcount']
-   if ptcnt > 0 and check_request_built(ridx, ptcnt, rstr) != 1: return
+   if ptcnt > 0:
+      fname = PVALS['rdimma1']
+      cnd = "rindex = {} AND wfile = '{}' AND status = 'O'".format(ridx, fname)
+      if op.isfile(fname) and PgDBI.pgget("wfrqst", "", cnd): return
 
    get_subset_info(rstr)
    
    if ptcnt > 0:
+      set_var_info()
       PgFile.change_local_directory(rdir, PgLOG.LOGWRN)
       build_final_files(ridx, rstr)
    else:
@@ -418,7 +424,7 @@ def process_subset_request(ridx, rdir, rstr):
          pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
          fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate, edate)
          PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
-   
+
 #
 # process a validated subset request file
 #
@@ -447,7 +453,9 @@ def process_subset_file(ridx, fidx, rdir, rstr):
    if not (tidx and dates):
       PgLOG.pglog(rstr + ': Miss tidx or date range to build request', PgLOG.LOGWRN)
 
-   subset_table_index(PGFILE['wfile'], tidx, dates[0], dates[1])
+   recs = subset_table_index(PGFILE['wfile'], tidx, dates[0], dates[1])
+
+   record = {'note' : "RECS: {}".format(recs)}   
 
 #
 # build range dates for subsetting
@@ -465,6 +473,7 @@ def build_table_file(fd, tidx, bdate, edate, atables):
    tname = "{}_{}".format(aname, tidx)
    pgrecs = PgDBI.pgmget(tname, "*", qcnd, PgLOG.LGEREX)
    rcnt = len(pgrecs['iidx']) if pgrecs else 0
+   recs = 0
    for r in range(rcnt):
       pgrec = {'icoreloc' : PgUtil.onerecord(pgrecs, r)}
       # quey for all attms
@@ -544,6 +553,9 @@ def build_table_file(fd, tidx, bdate, edate, atables):
 
       buf += "\n"
       fd.write(buf)
+      recs += 1
+
+   return recs
 
 #
 # check if not matching options
@@ -586,40 +598,6 @@ def join_attm_fields(aname, record):
    return sret
 
 #
-# check if all table files are built
-#
-def check_table_filename(ridx, tidx, edate):
-
-   fname = "Rqst{}-t{:03}.*-{}".format(ridx, tidx, edate.replace('-', ''))
-   return True if glob.glob(fname) else False 
-
-#
-# check if all request data files are built
-# return 0 - not yet;
-#        1 - all data files are built;
-#        2 - all files done including help files
-#
-def check_request_built(ridx, ptcnt, rstr):
-
-   cnd = "rindex = {} AND status = 'O'".format(ridx)
-   if ptcnt > 1:
-      pcnt = PgDBI.pgget('ptrqst', '', cnd)
-      if pcnt < ptcnt:
-         PgLOG.pglog('{}: {}/{} Request Partitions not finished yet'.format(rstr, (ptcnt-pcnt), ptcnt), PgLOG.LOGWRN)
-         return 0
-   wfcnt = PGRQST['fcount']
-   fcnt = PgDBI.pgget('wfrqst', '', cnd)
-   if fcnt < wfcnt:
-      PgLOG.pglog('{}: {}/{} Request Files not finished yet'.format(rstr, (wfcnt-fcnt), wfcnt), PgLOG.LOGWRN)
-      return 0
-   fname = PVALS['rdimma1']
-   cnd += " AND wfile = '{}'".format(fname)
-   if op.isfile(fname) and PgDBI.pgget("wfrqst", "", cnd):
-      PgLOG.pglog('{}: Request built already'.format(rstr), PgLOG.LOGWRN)
-      return 2
-   return 1
-         
-#
 # subset data and save in fname
 #
 def subset_table_index(fname, tidx, bdate, edate):
@@ -634,13 +612,16 @@ def subset_table_index(fname, tidx, bdate, edate):
    if dstep == 0: dstep = 1
    PgLOG.pgsystem("echo '{}' > {}".format(PVALS['vhead'], fname), PgLOG.LGWNEX, 1029)
    fd = open(fname, 'a')
+   recs = 0
    while bdate <= edate:
       pdate = PgUtil.adddate(bdate, 0, 0, dstep)
       if pdate > edate: pdate = edate
-      build_table_file(fd, tidx, bdate, pdate, atables)
+      recs += build_table_file(fd, tidx, bdate, pdate, atables)
       bdate = PgUtil.adddate(pdate, 0, 0, 1)
 
    fd.close()
+
+   return recs
   
 #
 # build the final subset files
