@@ -458,7 +458,8 @@ def process_subset_file(ridx, fidx, rdir, rstr):
 
    recs = subset_table_index(PGFILE['wfile'], tidx, dates[0], dates[1])
 
-   record = {'note' : "RECS: {}".format(recs)}   
+   record = {'note' : "RECS: {}".format(recs)}
+   PgDBI.pgupdt('wfrqst', record, "findex = {}".format(fidx))
 
 #
 # build range dates for subsetting
