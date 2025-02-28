@@ -410,10 +410,10 @@ def process_subset_request(ridx, rdir, rstr):
    if ptcnt > 0:
       set_var_info()
       PgFile.change_local_directory(rdir, PgLOG.LOGWRN)
-      build_final_files(ridx, rstr)
+      fcnt = build_final_files(ridx, rstr)
    else:
-      tcnt = get_table_info(PVALS['dates'])
-      for i in range(tcnt):
+      fcnt = get_table_info(PVALS['dates'])
+      for i in range(fcnt):
          bdate = PVALS['bdate'][i]
          edate = PVALS['edate'][i]
          tidx = PVALS['tidx'][i]
@@ -424,6 +424,9 @@ def process_subset_request(ridx, rdir, rstr):
          pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
          fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate.replace('-', ''), edate.replace('-', ''))
          PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
+
+   record = {'fcount' : fcnt}
+   PgDBI.pgupdt('dsrqst', record, "rindex = {}".format(ridx))
 
 #
 # process a validated subset request file
@@ -643,6 +646,8 @@ def build_final_files(ridx, rstr):
    pgrec['disp_order'] = fcnt
    PgFile.local_copy_local(fname, PVALS['codedir'] + fname, PgLOG.LGEREX)
    PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
+
+   return fcnt
 
 #
 # process reqest info, create command file and the input file list
