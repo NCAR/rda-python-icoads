@@ -403,7 +403,7 @@ def process_subset_request(ridx, rdir, rstr):
    if ptcnt > 0:
       fname = PVALS['rdimma1']
       cnd = "rindex = {} AND wfile = '{}' AND status = 'O'".format(ridx, fname)
-      if op.isfile(fname) and PgDBI.pgget("wfrqst", "", cnd): return
+      if PgDBI.pgget("wfrqst", "", cnd): return
 
    get_subset_info(rstr)
    
@@ -422,7 +422,7 @@ def process_subset_request(ridx, rdir, rstr):
          pgrec['disp_order'] = i+1
          pgrec['command'] = pgcmd + " -f -FI"
          pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
-         fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate, edate)
+         fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate.replace('-', ''), edate.replace('-', ''))
          PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
 
 #
