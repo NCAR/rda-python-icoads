@@ -625,6 +625,7 @@ def subset_table_index(fname, tidx, bdate, edate):
 
    fd.close()
 
+   PgDBI.dssdb_scname()
    return recs
   
 #
