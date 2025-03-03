@@ -19,6 +19,7 @@ import re
 from os import path as op
 from rda_python_common import PgLOG
 from rda_python_common import PgDBI
+from rda_python_common import PgSIG
 from rda_python_common import PgUtil
 from rda_python_common import PgFile
 from . import PgIMMA

@@ -23,7 +23,7 @@ from rda_python_common import PgDBI
 from rda_python_common import PgUtil
 from . import PgIMMA
 
-PVLS = {
+PVALS = {
    'files' : [],
    'oflag' : 0
 }

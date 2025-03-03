@@ -57,7 +57,7 @@ def main():
    
    PgDBI.ivaddb_dbname()
    if not (PVALS['bdate'] and PVALS['edate'] and re.match(r'^(daily|monthly|yearly)$', PVALS['group'])):
-      pgrec = pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', PgLOG.LGEREX)
+      pgrec = PgDBI.pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', PgLOG.LGEREX)
       print("Usage: counticoads -g GroupBy (daily|monthly|yearly) BeginDate EndDate")
       print("   Group by Daily, Monthly or Yearly is mandatory")
       print("   Set BeginDate and EndDate between '{} and '{}'".format(pgrec['bdate'], pgrec['edate']))

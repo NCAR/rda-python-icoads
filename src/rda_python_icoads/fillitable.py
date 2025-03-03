@@ -132,7 +132,7 @@ def add_field_records():
       file = vtable + ".txt"
       vcnt = acnt = ucnt = 0
       IVAR = open(file, 'r')
-      line = IVAD.readline()
+      line = IVAR.readline()
       while line:
          line = PgLOG.pgtrim(line)
          ms = re.match(r'^(\d+)\t(\w.*)$', line)

@@ -128,8 +128,8 @@ def check_imma_file(fname, midx):
    PgLOG.pglog("Count IMMA records in File '{}'".format(fname), PgLOG.WARNLG)
    flag = PVALS['flag'][midx]
 
-   acnts[0]*PgIMMA.TABLECOUNT
-   acounts[0]*PgIMMA.TABLECOUNT
+   acnts = [0]*PgIMMA.TABLECOUNT
+   acounts = [0]*PgIMMA.TABLECOUNT
 
    if flag&1:
       IMMA = open(fname, 'r')
@@ -148,8 +148,8 @@ def check_imma_file(fname, midx):
       cdate = bdate = PVALS['bmdate'][midx]
       edate = PVALS['emdate'][midx]
       while cdate <= edate:
-         acnts = PgIMMA.count_imma_records(cdate, 0, readall)
-         cdate = adddate(cdate, 0, 0, 1)
+         acnts = PgIMMA.count_imma_records(cdate, 0, PVALS['readall'])
+         cdate = PgUtil.adddate(cdate, 0, 0, 1)
          if acnts:
             for i in range(PgIMMA.TABLECOUNT): acounts[i] -= acnts[i]
 
