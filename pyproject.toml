@@ -45,3 +45,12 @@ where = ["src"]
 [project.scripts]
 "imma1_subset" = "rda_python_icoads.imma1_subset:main"
 "msg3.0_subset" = "rda_python_icoads.msg3.0_subset:main"
+"checkicoads" = "rda_python_icoads.checkicoads:main"
+"cleanicoads" = "rda_python_icoads.cleanicoads:main"
+"counticoads" = "rda_python_icoads.counticoads:main"
+"fillicoads" = "rda_python_icoads.fillicoads:main"
+"fillinventory" = "rda_python_icoads.fillinventory:main"
+"fillitable" = "rda_python_icoads.fillitable:main"
+"fillmonth" = "rda_python_icoads.fillmonth:main"
+"msg_download" = "rda_python_icoads.msg_download:main"
+"writeicoads" = "rda_python_icoads.writeicoads:main"
