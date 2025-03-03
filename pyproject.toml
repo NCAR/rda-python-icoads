@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rda_python_icoads"
-version = "1.0.8"
+version = "1.0.9"
 authors = [
   { name="Zaihua Ji", email="zji@ucar.edu" },
 ]
@@ -44,7 +44,7 @@ where = ["src"]
 
 [project.scripts]
 "imma1_subset" = "rda_python_icoads.imma1_subset:main"
-"msg3.0_subset" = "rda_python_icoads.msg3.0_subset:main"
+"msg3_subset" = "rda_python_icoads.msg3_subset:main"
 "checkicoads" = "rda_python_icoads.checkicoads:main"
 "cleanicoads" = "rda_python_icoads.cleanicoads:main"
 "counticoads" = "rda_python_icoads.counticoads:main"
