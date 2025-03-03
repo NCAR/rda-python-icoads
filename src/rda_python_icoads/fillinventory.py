@@ -43,7 +43,7 @@ def main():
       elif arg == "-o":
          PVALS['oflag'] |= 1
       elif re.match(r'^-', arg):
-         PgLOG.pglog(arg + ": Invalid Option", LGWNEX)
+         PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
       else:
          PVALS['files'].append(arg)
    
