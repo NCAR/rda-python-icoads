@@ -1,0 +1,94 @@
+##################################################################################
+#
+#     Title : msg3.0_subset_readme.txt
+#    Author : Zaihua Ji, zji@ucar.edu
+#      Date : 08/30/2016
+#             2025-02-28 transferred to package rda_python_icoads from
+#             https://github.com/NCAR/rda-icoads.git
+#   Purpose : template readme file for sending users the info of subset request 
+#             of ICOADS 3.0 MSG data
+#
+#    Github : https://github.com/NCAR/rda-python-icoads.git
+#
+##################################################################################
+#
+---------------------------------------------------
+   ICOADS 3.0 MSG Subset Data Summary
+---------------------------------------------------
+
+File naming conventions
+-----------------------
+MSGresol.variable.stattype.startdate.enddate_nn.comp
+
+ resol     - MSG data resolution
+ variable  - variable identifier, see Table 1a in document file "msg"
+ stattype  - statistic type, either standard (std) or enhanced (enh),
+             see file "R3.0-stat_doc.pdf" for more information on std and enh
+ startdate - starting date, yyyymm
+ enddate   - ending date, yyyymm
+ nn        - file sequence number, nn = 1,2,....
+             {nn = 2 and larger will only exist for large data requests.
+              Time increases monotonically in file nn = 1, 2, 3, etc.}
+ comp      - data file compression suffix, Z = Unix compress, .gz = GNU Zip,
+             no suffix means no compression.
+
+
+File Content
+------------        
+Each subset data file contains only one variable and begins with two header lines.  An example is:
+----------------------------------------------------------------------------------------------------------------
+Variable name : S , description : sea surface temperature              0.01 @C, format(i5,2i4,2f7.1,i5,10f8.2)
+ YEAR MON BSZ    BLO    BLA PID2      S1      S3      S5       M       N       S       D      HT       X       Y 
+----------------------------------------------------------------------------------------------------------------
+
+The first line identifies the variable (S in this case), the precision and units, 
+and Fortran format. The second line  shows data column labels. Other variables 
+and statistic definition are found in the document file "msg" in Tables 1a and 1b.
+
+Lines three through the end of file are data records.  An example is:
+                                                           
+ 1960   1   2  310.0  -26.0    1   26.70   26.70   26.70   26.70    1.00    0.00   14.00    0.00    1.80    0.40
+ 1960   1   2  312.0  -26.0    1   25.05   25.60   26.20   25.64   23.00    0.87   16.00    0.30    1.20    0.80
+ 1960   1   2  314.0  -26.0    1   23.28   24.50   24.84   24.30    7.00    0.95   16.00    0.30    0.60    1.60
+ 1960   1   2  316.0  -26.0    1   25.62   26.10   26.58   26.08   11.00    0.44   16.00    0.50    1.00    1.00
+
+Things to NOTE:
+
+   1) Only boxes that have observations will have data records.  NO
+      interpolation is done to fill in temporal or spatial data gaps.
+
+   2) Reference longitude and latitude (BLO, BLA) refer to the south
+      west corner of the 2x2 or 1x1 box.  Longitude is always measured
+      in east (E) coordinates, i.e. (0-360).
+
+   3) The mean location of the observations within the box is determined
+      by, mean longitude = BLO + X, mean latitude = BLA + Y.
+
+
+Supporting documentation files
+------------------------------
+R3.0-stat_doc.pdf - general description of various COADS statistic products,
+                    resolutions, and available time periods
+
+msg               - specific description of the MSG data product
+
+
+Variables Selected
+------------------
+See document file 'msg' for details.
+
+__VARLIST__
+
+ Subsetting Summary
+ ------------------
+ user name                :  __USER__
+ latitude limits(+N,-S)   :  __LATS__
+ longitude limits(+E only):  __LONS__
+ date limits(yyyymm)      :  __DATES__
+ data resolution          :  __RESOL__
+ statistic type           :  __PTYPE__
+ records input            :  __INRECS__
+ records output           :  __OUTRECS__
+ size input               :  __INSIZES__
+ size output              :  __OUTSIZES__
+
