@@ -110,7 +110,7 @@ def main():
 
    PgLOG.cmdlog("msg3.0_subset {}".format(' '.join(argv)))
    PGRQST = PgSubset.valid_subset_request(PVALS['ridx'], PVALS['rdir'], IDSID, PgLOG.LGWNEX)
-   if not PVALS['rdir']: PVALS['rdir'] = join_paths(PgLOG.PGLOG['RQSTHOME'], PGRQST['rqstid'])
+   if not PVALS['rdir']: PVALS['rdir'] = PgLOG.join_paths(PgLOG.PGLOG['RQSTHOME'], PGRQST['rqstid'])
    process_subset_request()
    PgLOG.cmdlog()
    sys.exit(0)
