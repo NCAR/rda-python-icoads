@@ -2,7 +2,7 @@
 #
 ##################################################################################
 #
-#     Title : msg3.0_subset
+#     Title : msg3_subset
 #    Author : Zaihua Ji, zji@ucar.edu
 #      Date : 01/07/2020
 #             2025-02-28 transferred to package rda_python_icoads from
