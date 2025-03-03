@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rda_python_icoads"
-version = "1.0.7"
+version = "1.0.8"
 authors = [
   { name="Zaihua Ji", email="zji@ucar.edu" },
 ]
@@ -30,10 +30,27 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"rda_python_icoads" = ["README_R3.0_Subset.html", "rdimma1_csv.f"]
+"rda_python_icoads" = [
+  "README_R3.0_Subset.html",
+  "rdimma1_csv.f",
+  "msg",
+  "R3.0-stat_doc.pdf",
+  "msg3.0_subset_readme.txt",
+  "msgsubset.f",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/NCAR/rda-python-icoads"
 
 [project.scripts]
-imma1_subset = "rda_python_icoads.imma1_subset:main"
+"imma1_subset" = "rda_python_icoads.imma1_subset:main"
+"msg3.0_subset" = "rda_python_icoads.msg3.0_subset:main"
+"checkicoads" = "rda_python_icoads.checkicoads:main"
+"cleanicoads" = "rda_python_icoads.cleanicoads:main"
+"counticoads" = "rda_python_icoads.counticoads:main"
+"fillicoads" = "rda_python_icoads.fillicoads:main"
+"fillinventory" = "rda_python_icoads.fillinventory:main"
+"fillitable" = "rda_python_icoads.fillitable:main"
+"fillmonth" = "rda_python_icoads.fillmonth:main"
+"msg_download" = "rda_python_icoads.msg_download:main"
+"writeicoads" = "rda_python_icoads.writeicoads:main"
