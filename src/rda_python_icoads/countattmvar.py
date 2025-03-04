@@ -103,7 +103,7 @@ def main():
 
    IMMA = open(PVALS['oname'], 'w')
    IMMA.write("{}, {}\n".format(PVALS['group'], PVALS['fname']))
-   count_attm_variable()
+   count_attm_variable(IMMA)
    IMMA.close()
    PgLOG.PgLOG.cmdlog()
    sys.exit(0)
@@ -111,7 +111,7 @@ def main():
 #
 # count the variable of a attm daily/month/y/yearly
 #
-def count_attm_variable():
+def count_attm_variable(IMMA):
 
    pcnt = init_periods()
    tcnt = 0
@@ -141,6 +141,7 @@ def count_period_attm_variable(pidx):
    PgLOG.pglog("Counting {}.{} for {} from IVADDB".format(PVALS['aname'], PVALS['fname'], PVALS['period'][pidx]), PgLOG.WARNLG)
    
    # get acount from the first table
+   acount = 0
    if tblcnt == 1:
       cnds = ["date BETWEEN '{}' AND '{}' AND ".format(bdate, edate)]
    else:
@@ -161,7 +162,7 @@ def count_daily_attm_variable(cdate):
    tidx = PgIMMA.date2tidx(cdate)
    if not tidx: return 0
    PgLOG.pglog("Counting {}.{} for {} from IVADDB".format(PVALS['aname'], PVALS['fname'], cdate), PgLOG.WARNLG)
-   account = count_table_attm_variable("date = '{}' AND ".format(cdate), tidx)
+   acount = count_table_attm_variable("date = '{}' AND ".format(cdate), tidx)
    if acount > 0:
       PgLOG.pglog("{}.{}: {} for {} of ".format(PVALS['aname'], PVALS['fname'], acount, PVALS['wcnd'], cdate), PgLOG.LOGWRN)
    return acount
@@ -180,7 +181,6 @@ def count_table_attm_variable(dcnd, tidx):
    if tidx not in PVALS['atables']: PVALS['atables'][tidx] = PgDBI.pgcheck(atable)
    if not PVALS['atables'][tidx]: return 0
 
-   dcnd = "date = '{}' AND ".format(cdate)
    if PVALS['aname'] == 'icoreloc':
       if PVALS['jname']:
          table = "{} j, {} n".format(jtable, atable)
