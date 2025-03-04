@@ -108,7 +108,7 @@ def main():
          if PVALS['rdir']: PgLOG.pglog("{}: Request Directory ({}) given already".format(arg, PVALS['rdir']), PgLOG.LGEREX)
          PVALS['rdir'] = arg
 
-   PgLOG.cmdlog("msg3.0_subset {}".format(' '.join(argv)))
+   PgLOG.cmdlog("msg3_subset {}".format(' '.join(argv)))
    PGRQST = PgSubset.valid_subset_request(PVALS['ridx'], PVALS['rdir'], IDSID, PgLOG.LGWNEX)
    if not PVALS['rdir']: PVALS['rdir'] = PgLOG.join_paths(PgLOG.PGLOG['RQSTHOME'], PGRQST['rqstid'])
    process_subset_request()
