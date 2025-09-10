@@ -433,7 +433,7 @@ def cache_field_info(aname, var, uidopt = 0):
 #
 def get_imma_records(cdate, line, records):
 
-   global CURIIDX, CURIUID
+   global CURIIDX
    llen = len(line)
    if llen == 0: return records
 
@@ -597,7 +597,6 @@ def initialize_attm_records(attm):
 #
 def append_one_attm(cdate, aidx, attm, pgrec, pgrecs):
 
-   global IMMA_COUNTS
    pgrecs['iidx'].append(CURIIDX)
    pgrecs['date'].append(cdate)
    for var in attm: pgrecs[var].append(pgrec[var])
@@ -608,7 +607,7 @@ def append_one_attm(cdate, aidx, attm, pgrec, pgrecs):
 #
 def get_imma_counts(line, acnts):
 
-   global CURIIDX, CURIUID
+   global CURIIDX
    llen = len(line)
    if llen == 0: return acnts
 
@@ -1127,7 +1126,7 @@ def get_itidx_date(uid):
       PgLOG.pglog(msg, PgLOG.LGEREX)
 
    if CHKEXIST:    # check
-      table = f"{IVADDB}.{ATTMNAME}_{pgrecs['tidx']}"
+      table = f"{IVADSC}.{ATTMNAME}_{pgrec['tidx']}"
       cnd = f"iidx = {pgrec['iidx']}"
       if PgDBI.pgget(table, "", cnd): return None
 

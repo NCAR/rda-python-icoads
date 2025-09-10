@@ -68,7 +68,7 @@ def main():
       sys.exit(0)
 
    PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   set_scname(dbname = 'ivaddb', scname = 'ivaddb1', lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
+   PgDBI.set_scname(dbname = 'ivaddb', scname = 'ivaddb1', lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
 
    PgLOG.cmdlog("fillicoads {}".format(' '.join(argv)))
    PgIMMA.init_current_indices(leaduid, chkexist, rn3)
