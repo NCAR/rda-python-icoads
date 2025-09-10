@@ -313,6 +313,7 @@ ISUPPL = {   # stti = '99' attl = 0  (variable lenth)
 TABLECOUNT = 12
 IMMA_NAMES = ['icoreloc', 'icorereg', 'iicoads', 'iimmt5', 'imodqc', 'imetavos',
               'inocn', 'iecr', 'ireanqc', 'iivad', 'iuida', 'isuppl']
+CHK_NAMES = ['iimmt5', 'imodqc', 'imetavos', 'inocn', 'iecr', 'ireanqc', 'iivad', 'isuppl']
 
 #
 # define IMMA sections, core + attms
@@ -342,6 +343,9 @@ MUNIQUE = {
    'iivad'    : ['arci', 'cdi']
 }
 
+IVADSC = 'ivaddb1'
+CNTLSC = 'cntldb1'
+
 MULTI_NAMES = []
 ATTI2NAME = {}
 ATTCPOS = INVENTORY = CURTIDX = CURIIDX = 0
@@ -358,10 +362,13 @@ ATTM_VARS = {}
 MISSING = -999999
 ERROR = -999999
 LEADUID = 0
+CURRN3 = -1
 CHKEXIST = 0
 UIDLENGTH = 0  # uid record len
 UIDOFFSET = 0  # uid value offset
 ATTMNAME = None      # standalone attm section name to fill
+DATE2TIDX = {}
+TBLSTATUS = {}
 
 #
 #  initialize the table information
@@ -395,6 +402,7 @@ def identify_attm_name(line):
       UIDOFFSET = 4
       UIDLENGTH = 15
       atti = line[15:17]
+      CURRN3 = int(line[12])
    else:
       atti = None
 
@@ -423,7 +431,7 @@ def cache_field_info(aname, var, uidopt = 0):
 #
 # append the individual fields and return imma records for one line input
 #
-def get_imma_records(line, cdate, records):
+def get_imma_records(cdate, line, records):
 
    global CURIIDX, CURIUID
    llen = len(line)
@@ -432,7 +440,6 @@ def get_imma_records(line, cdate, records):
    if CURIUID:    # got core section already
       coreidx = 2
       offset = UIDLENGTH
-      uid = CURIUID
    else:
       coreidx = 0
       offset = 0
@@ -450,7 +457,7 @@ def get_imma_records(line, cdate, records):
 #48      if aname == 'iivad': pgrec['cdi'] = PgUtil.adddate('2014-01-01', 0, 0, I36(pgrec['cdi']), 'YYYMMDD')
       if aname not in records: records[aname] = initialize_attm_records(imma[3])
       if CURIUID:
-         append_one_attm(uid, imma[0], imma[3], pgrec, records[aname])
+         append_one_attm(cdate, imma[0], imma[3], pgrec, records[aname])
       else:
          pgrecs[aname] = pgrec
 
@@ -459,32 +466,29 @@ def get_imma_records(line, cdate, records):
 
    if CURIUID: return records
 
-   if 'iuida' not in pgrecs: PgLOG.pglog("Miss UID attm: " + line, PgLOG.LGEREX)
-   uid = pgrecs['iuida']['uid']
-   records['icoreloc']['date'].append(cdate)
-
    for aname in pgrecs:
       imma = IMMAS[aname]
-      append_one_attm(uid, imma[0], imma[3], pgrecs[aname], records[aname])
+      append_one_attm(cdate, imma[0], imma[3], pgrecs[aname], records[aname])
 
    return records
 
 #
 # append the individual fields and return imma records for one line of multi-attm record
 #
-def get_imma_multiple_records(line, records):
+def get_imma_multiple_records(cdate, line, records):
 
    llen = len(line)
    if llen == 0: return records
    uid = line[4:10]
    offset = 15
+   CURRN3 = int(line[12])
    aname = ATTI2NAME[line[15:17]]
    imma = IMMAS[aname]
    if aname not in records: records[aname] = initialize_attm_records(imma[3])
 
    while (llen-offset) > 3:
       pgrec = get_one_attm(imma[3], offset, line)
-      append_one_attm(uid, imma[0], imma[3], pgrec, records[aname])
+      append_one_attm(cdate, imma[0], imma[3], pgrec, records[aname])
       offset += imma[2]
 
    return records
@@ -551,11 +555,10 @@ def set_imma_field(line):
    if not pgrec: return 0
 
    if not uid: PgLOG.pglog("Miss UID attm: " + line, PgLOG.LGEREX)
-   if not get_itidx_date(uid): return 0
 
-   tname = "{}_{}".format(FIELDINFO['aname'], CURTIDX)
-   if PgDBI.pgget(tname, "", "iidx = {} AND {}".format(CURIIDX, cnd)): return 0
-   return PgDBI.pgupdt(tname, pgrec, "iidx = {}".format(CURIIDX), PgLOG.LGEREX)
+   tname = f"{IVADSC}.{FIELDINFO['aname']}_{CURTIDX}"
+   if PgDBI.pgget(tname, "", f"iidx = {CURIIDX} AND {cnd}"): return 0
+   return PgDBI.pgupdt(tname, pgrec, f"iidx = {CURIIDX}", PgLOG.LGEREX)
 
 #
 # get all field values for a single attm
@@ -584,20 +587,19 @@ def get_one_attm(attm, offset, line):
 #
 def initialize_attm_records(attm):
 
-   pgrecs = {'iidx' : [], 'uid' : []}
+   pgrecs = {'iidx' : [], 'date' : []}
    for var in attm: pgrecs[var] = []
-   if 'yr' in attm: pgrecs['date'] = []
 
    return pgrecs
 
 #
 #  append one attm record to the multiple attm records
 #
-def append_one_attm(uid, aidx, attm, pgrec, pgrecs):
+def append_one_attm(cdate, aidx, attm, pgrec, pgrecs):
 
    global IMMA_COUNTS
    pgrecs['iidx'].append(CURIIDX)
-   if 'uid' not in attm: pgrecs['uid'].append(uid)
+   pgrecs['date'].append(cdate)
    for var in attm: pgrecs[var].append(pgrec[var])
    IMMA_COUNTS[aidx] += 1  # row index for individual table
 
@@ -655,8 +657,8 @@ def add_imma_records(cdate, records):
 
    global INVENTORY, CURTIDX
    if INVENTORY and IMMA_NAMES[0] in records:   # add counting record into inventory table
-      ulen = len(records[IMMA_NAMES[0]]['uid'])
-      if ulen > 0: INVENTORY = add_inventory_record(INVENTORY['fname'], cdate, ulen, INVENTORY)
+      rcnt = len(records[IMMA_NAMES[0]]['iidx'])
+      if rcnt > 0: INVENTORY = add_inventory_record(INVENTORY['fname'], cdate, rcnt, INVENTORY)
       if CURTIDX < INVENTORY['tidx']: CURTIDX = INVENTORY['tidx']
       tidx = CURTIDX
    else:
@@ -665,7 +667,7 @@ def add_imma_records(cdate, records):
    for i in range(TABLECOUNT):
       if not IMMA_COUNTS[i]: continue
       aname = IMMA_NAMES[i]
-      acnts[i] = add_records_to_table(aname, str(tidx), records[aname], cdate)
+      acnts[i] = add_records_to_table(IVADSC, aname, str(tidx), records[aname], cdate)
       IMMA_COUNTS[i] = 0
 
    iuida = records['iuida'] if 'iuida' in records else None
@@ -678,18 +680,20 @@ def add_imma_records(cdate, records):
 #
 def read_attm_for_date(aname, cdate, tidx = None):
 
-   if tidx is None:
+   global CURTIDX
+   if not tidx:
       tidx = date2tidx(cdate)
-      if tidx is None: return None
+      if not tidx: return None
+   CURTIDX = tidx
 
-   if aname == IMMA_NAMES[0]: return read_coreloc_for_date(cdate, tidx)
+   table = f"{IVADSC}.{aname}_{tidx}"
+   if aname in CHK_NAMES and not check_table_status(table): return None
+   return PgDBI.pgmget(table, "*", f"date = '{cdate}' ORDER BY iidx", PgLOG.LGEREX)
 
-   table = "{}_{}".format(aname, tidx)
-   if not PgDBI.pgcheck(table): return None
-   loctable = "{}_{}".format(IMMA_NAMES[0], tidx)
-   jtables = "{} a, {} b".format(table, loctable)
+def check_table_status(table):
 
-   return PgDBI.pgmget(jtables, "a.*", "b.date = '{}' AND a.iidx = b.iidx ORDER BY iidx".format(cdate), PgLOG.LGEREX)
+   if table not in TBLSTATUS: TBLSTATUS[table] = True if PgDBI.pgcheck(table) else False
+   return TBLSTATUS[table]
 
 #
 # read core records for given date
@@ -702,26 +706,60 @@ def read_coreloc_for_date(cdate, tidx = None):
       if not tidx: return None
    CURTIDX = tidx
 
-   return PgDBI.pgmget("{}_{}".format(IMMA_NAMES[0], tidx), '*', "date = '{}' ORDER BY iidx".format(cdate))
+   return PgDBI.pgmget(f"{IVADSC}.icoreloc_{tidx}", '*', f"date = '{cdate}' ORDER BY iidx")
+
+def uid2iidx_tidx(uid, tidx):
+
+   uidx = uid[0:2].lower()
+   suid = uid[2:6]
+   table = f"{CNTLSC}.itidx_{uidx}"
+   cond = f"suid = '{suid}' AND tidx = {tidx}"      
+   pgrec = PgDBI.pgget(table, "iidx", cond, PgLOG.LGEREX)
+   if not pgrec:
+      PgLOG.pglog(f"{suid}-{tidx}: suid-tidx not in {table}", PgLOG.LGEREX)
+
+   return pgrec['iidx']
+
+def uid2iidx_date(uid, date):
+
+   uidx = uid[0:2].lower()
+   suid = uid[2:6]
+   table = f"{CNTLSC}.itidx_{uidx}"
+   cond = f"suid = '{suid}' AND date = {date}"
+   pgrec = PgDBI.pgget(table, "iidx", cond, PgLOG.LGEREX)
+   if not pgrec:
+      PgLOG.pglog(f"{suid}-{date}: suid-date not in {table}", PgLOG.LGEREX)
+
+   return pgrec['iidx']
+
+def uid2iidx_rn3(uid, rn3):
+
+   uidx = uid[0:2].lower()
+   suid = uid[2:6]
+   table = f"{CNTLSC}.itidx_{uidx}"
+   cond = f"suid = '{suid}' AND rn3 = {rn3}"
+   pgrec = PgDBI.pgget(table, "iidx", cond, PgLOG.LGEREX)
+   if not pgrec:
+      PgLOG.pglog(f"{suid}-{rn3}: suid-rn3 not in {table}", PgLOG.LGEREX)
+
+   return pgrec['iidx']
 
 #
 # read attm record for given uid
 #
 def read_attm_for_uid(aname, uid, tidx):
 
-   if aname == IMMA_NAMES[0]: return read_coreloc_for_uid(uid, tidx)
-
-   table = "{}_{}".format(aname, tidx)
-   if not PgDBI.pgcheck(table): return None
-
-   return PgDBI.pgget(table, "*", "uid = '{}'".format(uid), PgLOG.LGEREX)
+   iidx = uid2iidx_tidx(uid, tidx)
+   table = f"{IVADSC}.{aname}_{tidx}"
+   return PgDBI.pgget(table, "*", f"iidx = '{iidx}'", PgLOG.LGEREX)
 
 #
 # read core records for given uid
 #
 def read_coreloc_for_uid(uid, tidx):
 
-   return PgDBI.pgget("{}_{}".format(IMMA_NAMES[0], tidx), '*', "uid = '{}'".format(uid))
+   iidx = uid2iidx_tidx(uid, tidx)
+   return PgDBI.pgget(f"{IVADSC}.icoreloc_{tidx}", '*', f"iidx = {iidx}")
 
 #
 # write IMMA records to file
@@ -774,15 +812,15 @@ def write_imma_records(fh, cdate, tidx, dumpall):
       tidx = date2tidx(cdate)
       if not tidx: return None
 
-   dcnd = "date = '{}' ORDER BY iidx".format(cdate)
-   mtable = "{}_{}".format(IMMA_NAMES[0], tidx)
+   dcnd = f"date = '{cdate}' ORDER BY iidx"
+   mtable = f"{IVADSC}.icoreloc_{tidx}"
    pgrecs = PgDBI.pgmget(mtable, "*", dcnd)
    if not pgrecs: return None
    acnts[0] = count = len(pgrecs['iidx'])
    minidx = pgrecs['iidx'][0]
    jcnd = "m.iidx = n.iidx AND " + dcnd
-   tcnd = "tidx = {} AND attm =".format(tidx)
-   atable = "cntldb.iattm"
+   tcnd = f"tidx = {tidx} AND attm ="
+   atable = f"{CNTLSC}.iattm"
 
    lines = ['']*count
    attcs = [-2]*count
@@ -794,9 +832,9 @@ def write_imma_records(fh, cdate, tidx, dumpall):
    for a in range(1, TABLECOUNT):
       aname = IMMA_NAMES[a]
       if aname in MUNIQUE: continue
-      if PgDBI.pgget(atable, "", "{} '{}'".format(tcnd, aname)):
-         ntable = "{}_{}".format(aname, tidx)
-         pgrecs = PgDBI.pgmget("{} m, {} n".format(mtable, ntable), "n.*", jcnd)
+      if PgDBI.pgget(atable, "", f"{tcnd} '{aname}'"):
+         ntable = f"{IVADSC}.{aname}_{tidx}"
+         pgrecs = PgDBI.pgmget(f"{mtable} m, {ntable} n", "n.*", jcnd)
          if not pgrecs: continue
          acnts[a] = len(pgrecs['iidx'])
          if dumpall and aname == "iuida":
@@ -810,9 +848,9 @@ def write_imma_records(fh, cdate, tidx, dumpall):
       for a in range(1, TABLECOUNT):
          aname = IMMA_NAMES[a]
          if MUNIQUE[aname] is None: continue
-         if PgDBI.pgget(atable, "", "{} '{}'".format(tcnd, aname)):
-            ntable = "{}_{}".format(aname, tidx)
-            pgrecs = PgDBI.pgmget("{} m, {} n".format(mtable, ntable), "n.*", jcnd)
+         if PgDBI.pgget(atable, "", f"{tcnd} '{aname}'"):
+            ntable = f"{IVADSC}.{aname}_{tidx}"
+            pgrecs = PgDBI.pgmget(f"{mtable} m, {ntable} n", "n.*", jcnd)
             if not pgrecs: continue
             acnts[a] = len(pgrecs['iidx'])
             append_imma_lines(aname, minidx, acnts[a], pgrecs, ulines, lines, attcs)
@@ -899,10 +937,10 @@ def count_imma_records(cdate, tidx, cntall):
       tidx = date2tidx(cdate)
       if not tidx: return None
 
-   atable = "cntldb.iattm"
-   tcnd = "tidx = {}".format(tidx)
-   dcnd = "date = '{}'".format(cdate)
-   mtable = "{}_{}".format(IMMA_NAMES[0], tidx)
+   atable = f"{CNTLSC}.iattm"
+   tcnd = f"tidx = {tidx}"
+   dcnd = f"date = '{cdate}'"
+   mtable = f"{IVADSC}.icoreloc_{tidx}"
    jcnd = "m.iidx = n.iidx AND " + dcnd
    acnts[0] = PgDBI.pgget(mtable, "", dcnd)
    if not acnts[0]: return None
@@ -910,9 +948,9 @@ def count_imma_records(cdate, tidx, cntall):
    for i in range(1,TABLECOUNT):
       aname = IMMA_NAMES[i]
       if not cntall and aname in MUNIQUE: continue
-      if PgDBI.pgget(atable, "", "{} AND attm = '{}'".format(tcnd, aname)):
-         ntable = "{}_{}".format(aname, tidx)
-         acnts[i] = PgDBI.pgget("{} m, {} n".format(mtable, ntable), "", jcnd)
+      if PgDBI.pgget(atable, "", f"{tcnd} AND attm = '{aname}'"):
+         ntable = f"{IVADSC}.{aname}_{tidx}"
+         acnts[i] = PgDBI.pgget(f"{mtable} m, {ntable} n", "", jcnd)
 
    return acnts
 
@@ -922,12 +960,12 @@ def count_imma_records(cdate, tidx, cntall):
 def add_inventory_record(fname, cdate, count, inventory, cntopt = 0):
 
    didx = 0
-   table = "cntldb.inventory"
+   table = f"{CNTLSC}.inventory"
 
    if cntopt == 2:
-      cnd = "date = '{}'".format(cdate)
+      cnd = f"date = '{cdate}'"
       pgrec = PgDBI.pgget(table, "didx, count", cnd, PgLOG.LGEREX)
-      if not pgrec: PgLOG.pglog("{}: error get record for {}".format(table, cnd), PgLOG.LGEREX)
+      if not pgrec: PgLOG.pglog(f"{table}: error get record for {cnd}", PgLOG.LGEREX)
       count = pgrec['count']
       didx = pgrec['didx']
       record = {}
@@ -944,9 +982,9 @@ def add_inventory_record(fname, cdate, count, inventory, cntopt = 0):
          record['tcount'] = count
 
    if didx:
-      cnd = "didx = {}".format(didx)
+      cnd = f"didx = {didx}"
       if not PgDBI.pgupdt(table, record, cnd, PgLOG.LGEREX):
-         PgLOG.pglog("{}: error update table for {}".format(table, cnd), PgLOG.LGEREX)
+         PgLOG.pglog(f"{table}: error update table for {cnd}", PgLOG.LGEREX)
    else:
       didx = PgDBI.pgadd(table, record, PgLOG.LGEREX|PgLOG.AUTOID)
 
@@ -967,15 +1005,16 @@ def get_attm_names(tidx):
    aindices = []
    attms = {}
    acnt = 0
-   pgrecs = PgDBI.pgmget("cntldb.iattm", "attm", "tidx = {}".format(tidx), PgLOG.LGEREX)
-   if not pgrecs: PgLOG.pglog("miss iattm record for tidx = {}".format(tidx), PgLOG.LGEREX)
+   cnd = f"tidx = {tidx}"
+   pgrecs = PgDBI.pgmget(f"{CNTLSC}.iattm", "attm", cnd, PgLOG.LGEREX)
+   if not pgrecs: PgLOG.pglog(f"miss iattm record for {cnd}", PgLOG.LGEREX)
    for aname in pgrecs['attm']: attms[aname] = 1
 
    for i in range(1, TABLECOUNT):
       aname = IMMA_NAMES[i]        
       if aname in attms:
          anames.append(aname)
-         atables.append("{}_{}".format(aname, tidx))
+         atables.append(f"{IVADSC}.{aname}_{tidx}")
          aindices.append(i)
          acnt += 1
 
@@ -986,7 +1025,7 @@ def get_attm_names(tidx):
 #
 def get_attm_line(aname, atable, iidx, pgrec):
 
-   if not pgrec: pgrec = PgDBI.pgget(atable, "*", "iidx = {}".format(iidx), PgLOG.LGEREX)
+   if not pgrec: pgrec = PgDBI.pgget(atable, "*", f"iidx = {iidx}", PgLOG.LGEREX)
    return build_one_attm_line(aname, pgrec) if pgrec else None
 
 #
@@ -994,7 +1033,7 @@ def get_attm_line(aname, atable, iidx, pgrec):
 #
 def get_multiple_attm_line(aname, atable, iidx):
 
-   pgrecs = PgDBI.pgmget(atable, "*", "iidx = {} ORDER BY lidx".format(iidx), PgLOG.LGEREX)
+   pgrecs = PgDBI.pgmget(atable, "*", f"iidx = {iidx} ORDER BY lidx", PgLOG.LGEREX)
    icnt = (len(pgrecs['lidx']) if pgrecs else 0)
    if not icnt: return (0, None)
 
@@ -1079,24 +1118,22 @@ def get_itidx_date(uid):
    global CURIUID, CURIIDX, CURTIDX
    uidx = uid[0:2].lower()
    suid = uid[2:6]
-   table = "cntldb.itidx_{}".format(uidx)
-
-   pgrec = PgDBI.pgget(table, "*", "suid = '{}'".format(suid), PgLOG.LGEREX)
-   if not pgrec: return PgLOG.pglog("{}: SKIP suid not in {}".format(suid, table), PgLOG.WARNLG)
+   table = f"{CNTLSC}.itidx_{uidx}"
+   cond = f"suid = '{suid}' AND rn3 = {CURRN3}"
+   pgrec = PgDBI.pgget(table, "*", cond, PgLOG.LGEREX)
+   if not pgrec:
+      msg = "{}-{}: suid-rn3 not in {}".format(suid, CURRN3, table)
+      if CURRN3 < 0: msg += "\nProvide a RN3 (>= 0) to proceed"
+      PgLOG.pglog(msg, PgLOG.LGEREX)
 
    if CHKEXIST:    # check
-      table = "{}_{}".format(ATTMNAME, pgrec['tidx'])
-      cnd = "iidx = {}".format(pgrec['iidx'])
-      if ATTMNAME in MUNIQUE:
-         for fname in MUNIQUE[ATTMNAME]: 
-            cnd += " AND {} = '{}'".format(fname, pgrec[fname])
-
+      table = f"{IVADDB}.{ATTMNAME}_{pgrecs['tidx']}"
+      cnd = f"iidx = {pgrec['iidx']}"
       if PgDBI.pgget(table, "", cnd): return None
 
    CURIUID = uid
    CURIIDX = pgrec['iidx']
    CURTIDX = pgrec['tidx']
-
    return pgrec['date']
 
 #
@@ -1137,15 +1174,18 @@ def get_record_date(yr, mo, dy):
 #
 def date2tidx(cdate, getend = True):
 
-   table = "cntldb.inventory"
+   if cdate in DATE2TIDX: return DATE2TIDX[cdate]
+   table = f"{CNTLSC}.inventory"
    pgrec = PgDBI.pgget(table, "tidx", "date = '{}'".format(cdate), PgLOG.LGEREX)
-   if pgrec: return pgrec['tidx']
+   if pgrec:
+      DATE2TIDX[cdate] = pgrec['tidx']
+      return pgrec['tidx']
 
    if getend:
-      cnd = "date < '{}'".format(cdate)
+      cnd = f"date < '{cdate}'"
       pgrec = PgDBI.pgget(table, "max(tidx) tidx", cnd, PgLOG.LGEREX)
    else:
-      cnd = "date > '{}'".format(cdate)
+      cnd = f"date > '{cdate}'"
       pgrec = PgDBI.pgget(table, "min(tidx) tidx", cnd, PgLOG.LGEREX)
    if pgrec:
       return pgrec['tidx']
@@ -1157,7 +1197,7 @@ def date2tidx(cdate, getend = True):
 #
 def iidx2date(iidx):
 
-   pgrec = PgDBI.pgget("cntldb.inventory", "date", "miniidx <= {} AND maxiidx >= {}".format(iidx, iidx), PgLOG.LGEREX)
+   pgrec = PgDBI.pgget(f"{CNTLSC}.inventory", "date", f"miniidx <= {iidx} AND maxiidx >= {iidx}", PgLOG.LGEREX)
    return (pgrec['date'] if pgrec else None)
 
 #
@@ -1173,7 +1213,7 @@ def number2name(cn, fn):
       for i in range(2, TABLECOUNT):
          aname = IMMA_NAMES[i]
          if cn == int(IMMAS[aname][1]): break
-      if i >= TABLECOUNT: PgLOG.pglog("{}: Cannot find Component".format(cn), PgLOG.LGEREX)
+      if i >= TABLECOUNT: PgLOG.pglog(f"{cn}: Cannot find Component", PgLOG.LGEREX)
    elif fn < 17:
       offset = 1
       aname = IMMA_NAMES[0]
@@ -1187,7 +1227,7 @@ def number2name(cn, fn):
          NUM2NAME[key] = [fname, aname]
          return NUM2NAME[key]
 
-   PgLOG.pglog("{}: Cannot find field name in Component '{}'".format(fn, aname), PgLOG.LGEREX)
+   PgLOG.pglog(f"{fn}: Cannot find field name in Component '{aname}'", PgLOG.LGEREX)
 
 #
 # get component number and field number from give field name
@@ -1265,7 +1305,7 @@ def order_attm_variables(attm, aname = None):
 #
 def get_inventory_record(didx = 0, cntopt = 0):
 
-   table = "cntldb.inventory"
+   table = f"{CNTLSC}.inventory"
 
    if not didx:
       if cntopt == 2:
@@ -1290,7 +1330,7 @@ def get_inventory_record(didx = 0, cntopt = 0):
 #
 def get_inventory_didx(cdate, prev):
 
-   table = "cntldb.inventory"
+   table = f"{CNTLSC}.inventory"
    fld = "didx, date"
    if prev:
       cnd = "date < '{}' ORDER BY date DECS".format(cdate)
@@ -1305,9 +1345,9 @@ def get_inventory_didx(cdate, prev):
 #
 # initialize the global indices
 #
-def init_current_indices(leaduid = 0, chkexist = 0):
+def init_current_indices(leaduid = 0, chkexist = 0, rn3 = 0):
 
-   global UIDIDX, CURIIDX, CURTIDX, CURIUID, AUTHREFS, LEADUID, CHKEXIST
+   global UIDIDX, CURIIDX, CURTIDX, CURIUID, AUTHREFS, LEADUID, CHKEXIST, CURRN3
    # leading info for iuida
    UIDIDX = IMMAS['iuida'][0]
    CURIIDX = 0
@@ -1316,6 +1356,7 @@ def init_current_indices(leaduid = 0, chkexist = 0):
    AUTHREFS = {}
    LEADUID = leaduid
    CHKEXIST = chkexist
+   CURRN3 = rn3
 
 #
 # initialize indices for givn date
@@ -1329,7 +1370,7 @@ def init_indices_for_date(cdate, fname):
       CURIIDX = INVENTORY['maxiidx']
       CURTIDX = INVENTORY['tidx']
    else:
-      pgrec = PgDBI.pgget("cntldb.inventory", "*", "date = '{}'".format(cdate), PgLOG.LGEREX)
+      pgrec = PgDBI.pgget(f"{CNTLSC}.inventory", "*", "date = '{}'".format(cdate), PgLOG.LGEREX)
       if not pgrec: PgLOG.pglog("{}: give date not in inventory yet".format(cdate), PgLOG.LGEREX)
       if CURIIDX < pgrec['miniidx']:
          CURIIDX = pgrec['miniidx'] - 1
@@ -1343,21 +1384,21 @@ def update_control_tables(cdate, acnts, iuida, tidx = 0):
    if not tidx: tidx = date2tidx(cdate)
 
    if iuida and acnts[0]:
-      tname = "cntldb.itidx"
       records = {}
       for i in range(acnts[UIDIDX]):
          auid = iuida['uid'][i][0:2].lower()
          if auid not in records:
-            records[auid] = {'suid' : [], 'date' : [], 'tidx' : [], 'iidx' : []}
+            records[auid] = {'iidx' : [], 'suid' : [], 'rn3' : [], 'date' : [], 'tidx' : []}
          records[auid]['suid'].append(iuida['uid'][i][2:6])
+         records[auid]['rn3'].append(iuida['rn3'][i])
          records[auid]['date'].append(cdate)
          records[auid]['tidx'].append(tidx)
          records[auid]['iidx'].append(iuida['iidx'][i])
 
       for auid in records:
-         add_records_to_table(tname, auid, records[auid], cdate)
+         add_records_to_table(CNTLSC, 'itidx', auid, records[auid], cdate)
 
-   tname = "cntldb.iattm"
+   tname = f"{CNTLSC}.iattm"
    dname = tname + "_daily"
    for i in range(TABLECOUNT):
       if not acnts[i]: continue
@@ -1383,12 +1424,12 @@ def update_control_tables(cdate, acnts, iuida, tidx = 0):
 #
 # add records to a table
 #
-def add_records_to_table(tname, suffix, records, cdate):
+def add_records_to_table(scname, tname, suffix, records, cdate):
 
-   table =  "{}_{}".format(tname, suffix)
-   if not PgDBI.pgcheck(table):
-      pgcmd = PgDBI.get_pgddl_command(tname)
-      PgLOG.pgsystem("{} -x {}".format(pgcmd, suffix), PgLOG.LGWNEX)
+   table =  f"{scname}.{tname}_{suffix}"
+   if not check_table_status(table):
+      pgcmd = PgDBI.get_pgddl_command(tname = tname, suf = suffix, scname = scname)
+      if PgLOG.pgsystem(pgcmd, PgLOG.LGWNEX): TBLSTATUS[table] = True
 
    cnt = PgDBI.pgmadd(table, records, PgLOG.LGEREX)
    s = 's' if cnt > 1 else ''
@@ -1409,13 +1450,13 @@ def match_imma_records(cdate, t1, t2, w, e, s, n, vt):
       tinfo = TINFO[cdate]
       if not tinfo: return 0
    else:
-      tinfo = PgDBI.pgget("cntldb.itable", "*", "bdate <= '{}' AND edate >= '{}'".format(cdate, cdate), PgLOG.LGWNEX)
+      tinfo = PgDBI.pgget(f"{CNTLSC}.itable", "*", "bdate <= '{}' AND edate >= '{}'".format(cdate, cdate), PgLOG.LGWNEX)
       if not tinfo:
          TINFO[cdate] = 0
          return 0
 
    # match time/latitude
-   mrecs = PgDBI.pgmget("icoreloc_{}".format(tinfo['tidx']), "*",
+   mrecs = PgDBI.pgmget(f"{IVADSC}.icoreloc_{tinfo['tidx']}", "*",
                   "date = '{}' AND hr BETWEEN {} AND {} AND lat BETWEEN {} AND {}".format(cdate, t1, t2, s, n), PgLOG.LGWNEX)
    if not mrecs: return 0  # no match
 
@@ -1451,7 +1492,7 @@ def match_imma_vars(tinfo, mrec, vt):
       name = vt[v]
       if name not in mrecs:
          if name in tinfo:
-            mrecs[name] = PgDBI.pgget("{}_{}".format(name, tidx), "*", "iidx = {}".format(iidx))
+            mrecs[name] = PgDBI.pgget(f"{IVADSC}.{name}_{tidx}", "*", f"iidx = {iidx}")
             if not mrecs[name]: mrecs[name] = 0
          else:
             mrecs[name] = 0
