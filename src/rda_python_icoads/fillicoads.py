@@ -33,8 +33,10 @@ PVALS = {
 def main():
 
    addinventory = leaduid = chkexist = 0
+   rn3 = -1
    argv = sys.argv[1:]
-   
+
+   option = None   
    for arg in argv:
       if arg == "-b":
          PgLOG.PGLOG['BCKGRND'] = 1
@@ -44,27 +46,32 @@ def main():
          leaduid = 1
       elif arg == "-e":
          chkexist = 1
+      elif arg == "-r":
+         option = 'r'
       elif arg == "-i":
          addinventory = 1
       elif re.match(r'^-', arg):
          PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
+      elif option == 'r':
+         rn3 = int(arg)
       else:
          PVALS['files'].append(arg)
 
    if not PVALS['files']:
-      print("Usage: fillicoads [-a] [-e] [-i] [-u] FileNameList")
+      print("Usage: fillicoads [-a] [-e] [-i] [-r] [-u] FileNameList")
       print("   At least one file name needs to fill icoads data into Postgres Server")
       print("   Option -a: add all attms, including multi-line ones, such as IVAD and REANQC")
       print("   Option -i: add daily counting records into inventory table")
+      print("   Option -r: last digit of IMMA release number")
       print("   Option -u: standalone attachment records with leading 6-character UID")
       print("   Option -e: check existing record before adding attm")
       sys.exit(0)
 
    PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   PgDBI.ivaddb_dbname()
-  
+   PgDBI.set_scname(dbname = 'ivaddb', scname = 'ivaddb1', lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
+
    PgLOG.cmdlog("fillicoads {}".format(' '.join(argv)))
-   PgIMMA.init_current_indices(leaduid, chkexist)
+   PgIMMA.init_current_indices(leaduid, chkexist, rn3)
    PVALS['names'] = '/'.join(PgIMMA.IMMA_NAMES)
    fill_imma_data(addinventory)
    PgLOG.cmdlog()
@@ -103,14 +110,14 @@ def process_imma_file(fname, addinventory):
       idate = cdate = PgIMMA.get_imma_date(line)
       if cdate:
          PgIMMA.init_indices_for_date(cdate, iname)
-         records = PgIMMA.get_imma_records(line, cdate, records)
+         records = PgIMMA.get_imma_records(cdate, line, records)
          break
       line = IMMA.readline()
 
    line = IMMA.readline()
    while line:
       if PVALS['uatti'] and line[0:2] == PVALS['uatti']:
-          records = PgIMMA.get_imma_multiple_records(line, records)
+          records = PgIMMA.get_imma_multiple_records(cdate, line, records)
       else:
          idate = PgIMMA.get_imma_date(line)
          if idate:
@@ -120,7 +127,7 @@ def process_imma_file(fname, addinventory):
                records = {}
                cdate = idate
                PgIMMA.init_indices_for_date(cdate, iname)
-            records = PgIMMA.get_imma_records(line, idate, records)
+            records = PgIMMA.get_imma_records(idate, line, records)
       line = IMMA.readline()
 
    IMMA.close()
