@@ -1122,8 +1122,10 @@ def get_itidx_date(uid):
    pgrec = PgDBI.pgget(table, "*", cond, PgLOG.LGEREX)
    if not pgrec:
       msg = "{}-{}: suid-rn3 not in {}".format(suid, CURRN3, table)
-      if CURRN3 < 0: msg += "\nProvide a RN3 (>= 0) to proceed"
-      PgLOG.pglog(msg, PgLOG.LGEREX)
+      if CURRN3 < 0:
+         PgLOG.pglog(msg + "\nProvide a RN3 (>= 0) to proceed", PgLOG.LGEREX)
+      else:
+         return PgLOG.pglog(msg + ", SKIP it", PgLOG.WARNLG)
 
    if CHKEXIST:    # check
       table = f"{IVADSC}.{ATTMNAME}_{pgrec['tidx']}"
