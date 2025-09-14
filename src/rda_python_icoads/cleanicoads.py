@@ -68,7 +68,7 @@ def main():
       PgLOG.pgexit()
 
    PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   PgDBI.ivaddb_dbname()
+   PgDBI.set_scname(dbname = 'ivaddb', scname = PgIMMA.IVADSC, lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
    PgLOG.cmdlog("cleanicoads {}".format(' '.join(argv)))
    set_table_info()
    clean_imma_data()   
@@ -80,7 +80,7 @@ def main():
 #
 def set_table_info():
 
-   table = "cntldb.inventory"
+   table = f"{PgIMMA.CNTLSC}.inventory"
    if PVALS['edate']:
       PVALS['dcnd'] = "date BETWEEN '{}' AND '{}'".format(PVALS['bdate'], PVALS['edate'])
    else:
@@ -97,7 +97,7 @@ def set_table_info():
 #
 def clean_imma_data():
 
-   table = "cntldb.inventory"
+   table = f"{PgIMMA.CNTLSC}.inventory"
 
    for i in range(PVALS['tcnt']):
       tidx = PVALS['tinfo']['tidx'][i]
@@ -127,7 +127,7 @@ def clean_imma_data_for_tidx(tidx, cnd):
 #
 def clean_one_attm_for_tidx(aname, tidx, cnd):
 
-   table = "{}_{}".format(aname, tidx)
+   table = f"{PgIMMA.IVADSC}.{aname}_{tidx}"
    if not PgDBI.pgcheck(table): return 0  # not record to delete
 
    if aname == 'iuida': clean_itidx_for_tidx(table, cnd) 
@@ -144,7 +144,7 @@ def clean_one_attm_for_tidx(aname, tidx, cnd):
 #
 def clean_itidx_for_tidx(table, cnd):
 
-   tname = "cntldb.itidx"
+   tname = f"{PgIMMA.CNTLSC}.itidx"
    uids = PgDBI.pgmget(table, "distinct (substring(uid, 1, 2)) uida", cnd, PgLOG.LGEREX)
    ucnt = len(uids['uida']) if uids else 0
    for i in range(ucnt):
@@ -159,7 +159,7 @@ def clean_itidx_for_tidx(table, cnd):
 #
 def clean_iattm_for_tidx(aname, tidx, cnt):
 
-   table = "cntldb.iattm"
+   table = f"{PgIMMA.CNTLSC}.iattm"
    cnd = "attm = '{}' AND tidx = {}".format(aname, tidx)
    pgrec = {'count' : cnt}
    PgDBI.pgupdt(table, pgrec, cnd, PgLOG.LGWNEX)

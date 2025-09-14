@@ -52,23 +52,28 @@ def main():
          addinventory = 1
       elif re.match(r'^-', arg):
          PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
+      elif option == 'f':
+         get_imma_filelist(arg)
+         option = None
       elif option == 'r':
          rn3 = int(arg)
+         option = None
       else:
          PVALS['files'].append(arg)
 
    if not PVALS['files']:
-      print("Usage: fillicoads [-a] [-e] [-i] [-r] [-u] FileNameList")
+      print("Usage: fillicoads [-a] [-e] [-f InputFile] [-i] [-r RN3] [-u] FileList")
       print("   At least one file name needs to fill icoads data into Postgres Server")
       print("   Option -a: add all attms, including multi-line ones, such as IVAD and REANQC")
+      print("   Option -f: provide a filename holding a list of IMMA1 files")
       print("   Option -i: add daily counting records into inventory table")
-      print("   Option -r: last digit of IMMA release number")
+      print("   Option -r: the Third digit of IMMA release number")
       print("   Option -u: standalone attachment records with leading 6-character UID")
       print("   Option -e: check existing record before adding attm")
       sys.exit(0)
 
    PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   PgDBI.set_scname(dbname = 'ivaddb', scname = 'ivaddb1', lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
+   PgDBI.set_scname(dbname = 'ivaddb', scname = PgIMMA.IVADSC, lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
 
    PgLOG.cmdlog("fillicoads {}".format(' '.join(argv)))
    PgIMMA.init_current_indices(leaduid, chkexist, rn3)
@@ -76,6 +81,15 @@ def main():
    fill_imma_data(addinventory)
    PgLOG.cmdlog()
    PgLOG.pgexit()
+
+#
+# read in imma file list from a given file name
+#
+def get_imma_filelist(fname):
+
+   with open(fname, "r") as f:
+      for line in f.readlines():
+         PVALS['files'].append(line.strip())
 
 #
 # fill up imma data

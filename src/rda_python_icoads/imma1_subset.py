@@ -607,10 +607,12 @@ def join_attm_fields(aname, record):
 def subset_table_index(fname, tidx, bdate, edate):
 
    atables = {}
-   PgDBI.ivaddb_scname()
+   PgDBI.set_scname(dbname = 'ivaddb', scname = PgIMMA.IVADSC, lnname = 'ivaddb', dbhost = PgLOG.PGLOG['PMISCHOST'])
 
+   tname = f"{PgIMMA.CTNLSC}.iattm"
    for aname in PVALS['anames']:
-      atables[aname] = PgDBI.pgget('cntldb.iattm', "", "tidx = {} AND attm = '{}'".format(tidx, aname), PgLOG.LGEREX)
+      cnd = f"tidx = {tidx} AND attm = '{aname}'"
+      atables[aname] = PgDBI.pgget(tname, "", cnd, PgLOG.LGEREX)
 
    dstep = int(PgUtil.diffdate(edate, bdate)/PSTEP)
    if dstep == 0: dstep = 1
