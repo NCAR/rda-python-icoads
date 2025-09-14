@@ -46,6 +46,8 @@ def main():
          leaduid = 1
       elif arg == "-e":
          chkexist = 1
+      elif arg == "-f":
+         option = 'f'
       elif arg == "-r":
          option = 'r'
       elif arg == "-i":
@@ -146,8 +148,9 @@ def process_imma_file(fname, addinventory):
 
    IMMA.close()
 
-   acnts = PgIMMA.add_imma_records(cdate, records)
-   for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
+   if cdate and records:
+      acnts = PgIMMA.add_imma_records(cdate, records)
+      for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
 
    PgLOG.pglog("{} ({}) filled from {}".format(' '.join(map(str, acounts)), PVALS['names'], op.basename(fname)), PgLOG.LOGWRN)
    
