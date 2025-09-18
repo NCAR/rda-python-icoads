@@ -454,7 +454,7 @@ def get_imma_records(cdate, line, records):
          aname = ATTI2NAME[line[offset:offset+2]]
       imma = IMMAS[aname]
       pgrec = get_one_attm(imma[3], offset, line)
-#48      if aname == 'iivad': pgrec['cdi'] = PgUtil.adddate('2014-01-01', 0, 0, I36(pgrec['cdi']), 'YYYMMDD')
+#48      if aname == 'iivad': pgrec['cdi'] = PgUtil.adddate('2014-01-01', 0, 0, I36(pgrec['cdi']), 'YYYYMMDD')
       if aname not in records: records[aname] = initialize_attm_records(imma[3])
       if CURIUID:
          append_one_attm(cdate, imma[0], imma[3], pgrec, records[aname])
@@ -1115,27 +1115,33 @@ def get_imma_date(line):
 def get_itidx_date(uid):
 
    global CURIUID, CURIIDX, CURTIDX
+   if CURRN3 < 0: PgLOG.pglog(f"{uid}: Provide a RN3 (>= 0) to proceed", PgLOG.LGEREX)
    uidx = uid[0:2].lower()
    suid = uid[2:6]
    table = f"{CNTLSC}.itidx_{uidx}"
-   cond = f"suid = '{suid}' AND rn3 = {CURRN3}"
-   pgrec = PgDBI.pgget(table, "*", cond, PgLOG.LGEREX)
-   if not pgrec:
-      msg = "{}-{}: suid-rn3 not in {}".format(suid, CURRN3, table)
-      if CURRN3 < 0:
-         PgLOG.pglog(msg + "\nProvide a RN3 (>= 0) to proceed", PgLOG.LGEREX)
-      else:
-         return PgLOG.pglog(msg + ", SKIP it", PgLOG.WARNLG)
+   cond = f"suid = '{suid}'"
+   pgrecs = PgDBI.pgmget(table, "*", cond, PgLOG.LGEREX)
+   ucnt = len(pgrecs['iidx']) if pgrecs else 0
+   if ucnt == 0: return PgLOG.pglog(f"{uid}: not in table {table}, SKIP it", PgLOG.LOGWRN)
 
+   uidx = -1
+   for i in range(ucnt):
+      if pgrecs['rn3'][i] == CURRN3:
+         uidx = i
+         break
+   if uidx == -1: return PgLOG.pglog(f"{uid}: not in table {table} for rn3({CURRN3}), SKIP it", PgLOG.LOGWRN)
+
+   iidx = pgrecs['iidx'][uidx]
+   tidx = pgrecs['tidx'][uidx]
    if CHKEXIST:    # check
-      table = f"{IVADSC}.{ATTMNAME}_{pgrec['tidx']}"
-      cnd = f"iidx = {pgrec['iidx']}"
+      table = f"{IVADSC}.{ATTMNAME}_{tidx}"
+      cnd = f"iidx = {iidx}"
       if PgDBI.pgget(table, "", cnd): return None
 
    CURIUID = uid
-   CURIIDX = pgrec['iidx']
-   CURTIDX = pgrec['tidx']
-   return pgrec['date']
+   CURIIDX = iidx
+   CURTIDX = tidx
+   return pgrecs['date'][uidx]
 
 #
 # get record date for given year, month and day

@@ -132,7 +132,7 @@ def process_imma_file(fname, addinventory):
    PgIMMA.identify_attm_name(line)  # check and record standalone attm name
    while line:
       idate = cdate = PgIMMA.get_imma_date(line)
-      if cdate and (PVALS['dtlen'] == 0 or cdate >= PVALS['dates'][0]):
+      if cdate and (PVALS['dtlen'] == 0 or PgUtil.diffdate(cdate, PVALS['dates'][0]) >= 0):
          PgIMMA.init_indices_for_date(cdate, iname)
          records = PgIMMA.get_imma_records(cdate, line, records)
          break
@@ -150,7 +150,7 @@ def process_imma_file(fname, addinventory):
                for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
                records = {}
                cdate = idate
-               if PVALS['dtlen'] == 2 and cdate > PVALS['dates'][1]: break
+               if PVALS['dtlen'] == 2 and PgUtil.diffdate(cdate, PVALS['dates'][1]) > 0: break
                PgIMMA.init_indices_for_date(cdate, iname)
             records = PgIMMA.get_imma_records(idate, line, records)
       line = IMMA.readline()
