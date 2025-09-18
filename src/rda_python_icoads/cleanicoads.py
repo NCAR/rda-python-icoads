@@ -107,9 +107,10 @@ def clean_imma_data():
       else:
          clean_imma_data_for_tidx(tidx, cnd)
 
-   cnt = PgDBI.pgdel(table, PVALS['dcnd'], PgLOG.LGEREX)
-   s = 's' if cnt > 1 else ''
-   PgLOG.pglog("{}: {} record{} deleted for {}".format(table, cnt, s, PVALS['dcnd']), PgLOG.LOGWRN)
+   if not PVALS['aname']:
+      cnt = PgDBI.pgdel(table, PVALS['dcnd'], PgLOG.LGEREX)
+      s = 's' if cnt > 1 else ''
+      PgLOG.pglog("{}: {} record{} deleted for {}".format(table, cnt, s, PVALS['dcnd']), PgLOG.LOGWRN)
 
 #
 # clean up imma data for table index

@@ -24,7 +24,9 @@ from . import PgIMMA
 PVALS = {
    'uatti' : '',
    'names' : None,
-   'files' : []
+   'files' : [],
+   'dates' : [],
+   'dtlen' : 0
 }
 
 #
@@ -38,25 +40,29 @@ def main():
 
    option = None   
    for arg in argv:
-      if arg == "-b":
-         PgLOG.PGLOG['BCKGRND'] = 1
-      elif arg == "-a":
-         PVALS['uatti'] = "98"
-      elif arg == "-u":
-         leaduid = 1
-      elif arg == "-e":
-         chkexist = 1
-      elif arg == "-f":
-         option = 'f'
-      elif arg == "-r":
-         option = 'r'
-      elif arg == "-i":
-         addinventory = 1
-      elif re.match(r'^-', arg):
-         PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
+      if re.match(r'-\w', arg):
+         option = None
+         if arg[1] == "b":
+            PgLOG.PGLOG['BCKGRND'] = 1
+         elif arg[1] == "a":
+            PVALS['uatti'] = "98"
+         elif arg[1] == "u":
+            leaduid = 1
+         elif arg[1] == "e":
+            chkexist = 1
+         elif arg[1] == "i":
+            addinventory = 1
+         elif arg[1] in "fpr":
+            option = arg[1]
+         else:
+            PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
       elif option == 'f':
          get_imma_filelist(arg)
          option = None
+      elif option == 'p':
+         PVALS['dates'].append(PgUtil.format_date(arg))
+         PVALS['dtlen'] += 1
+         if PVALS['dtlen'] == 2: option = None
       elif option == 'r':
          rn3 = int(arg)
          option = None
@@ -64,11 +70,12 @@ def main():
          PVALS['files'].append(arg)
 
    if not PVALS['files']:
-      print("Usage: fillicoads [-a] [-e] [-f InputFile] [-i] [-r RN3] [-u] FileList")
+      print("Usage: fillicoads [-a] [-e] [-f InputFile] [-i] [-p BDate [EDate]] [-r RN3] [-u] FileList")
       print("   At least one file name needs to fill icoads data into Postgres Server")
       print("   Option -a: add all attms, including multi-line ones, such as IVAD and REANQC")
       print("   Option -f: provide a filename holding a list of IMMA1 files")
       print("   Option -i: add daily counting records into inventory table")
+      print("   Option -p: provide a period for filling data")
       print("   Option -r: the Third digit of IMMA release number")
       print("   Option -u: standalone attachment records with leading 6-character UID")
       print("   Option -e: check existing record before adding attm")
@@ -121,10 +128,10 @@ def process_imma_file(fname, addinventory):
 
    # get the first valid date and do initialization
    line = IMMA.readline()
+   PgIMMA.identify_attm_name(line)  # check and record standalone attm name
    while line:
-      PgIMMA.identify_attm_name(line)  # check and record standalone attm name
       idate = cdate = PgIMMA.get_imma_date(line)
-      if cdate:
+      if cdate and (PVALS['dtlen'] == 0 or cdate >= PVALS['dates'][0]):
          PgIMMA.init_indices_for_date(cdate, iname)
          records = PgIMMA.get_imma_records(cdate, line, records)
          break
@@ -142,6 +149,7 @@ def process_imma_file(fname, addinventory):
                for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
                records = {}
                cdate = idate
+               if PVALS['dtlen'] == 2 and cdate > PVALS['dates'][1]: break
                PgIMMA.init_indices_for_date(cdate, iname)
             records = PgIMMA.get_imma_records(idate, line, records)
       line = IMMA.readline()
