@@ -1122,14 +1122,14 @@ def get_itidx_date(uid):
    cond = f"suid = '{suid}'"
    pgrecs = PgDBI.pgmget(table, "*", cond, PgLOG.LGEREX)
    ucnt = len(pgrecs['iidx']) if pgrecs else 0
-   if ucnt == 0: return PgLOG.pglog(f"{uid}: not in table {table}, SKIP it", PgLOG.LOGWRN)
+   if ucnt == 0: return PgLOG.pglog(f"{uid}: not in table {table}, SKIP it", PgLOG.WARNLG)
 
    uidx = -1
    for i in range(ucnt):
       if pgrecs['rn3'][i] == CURRN3:
          uidx = i
          break
-   if uidx == -1: return PgLOG.pglog(f"{uid}: not in table {table} for rn3({CURRN3}), SKIP it", PgLOG.LOGWRN)
+   if uidx == -1: return PgLOG.pglog(f"{uid}: not in table {table} for rn3({CURRN3}), SKIP it", PgLOG.WARNLG)
 
    iidx = pgrecs['iidx'][uidx]
    tidx = pgrecs['tidx'][uidx]
