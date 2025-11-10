@@ -343,8 +343,8 @@ MUNIQUE = {
    'iivad'    : ['arci', 'cdi']
 }
 
-IVADSC = 'ivaddb1'
-CNTLSC = 'cntldb1'
+IVADSC = 'ivaddb'
+CNTLSC = 'cntldb'
 
 MULTI_NAMES = []
 ATTI2NAME = {}

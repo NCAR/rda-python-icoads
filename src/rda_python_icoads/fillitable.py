@@ -143,6 +143,7 @@ def add_field_records():
                acnt += 1
             elif stat == 2:
                ucnt += 1
+         line = IVAR.readline()
 
       IVAR.close()
       PgLOG.pglog("{}/{} of {} values added/updated into table {}".format(acnt, ucnt, vcnt, vtable), PgLOG.LOGWRN)
@@ -152,7 +153,7 @@ def add_field_records():
 #
 def add_field_value(var, vtable, key, desc):
 
-   cnd = "{} = {}".foramt(var, key)
+   cnd = "{} = {}".format(var, key)
 
    pgrec = PgDBI.pgget(vtable, "*", cnd)
 
