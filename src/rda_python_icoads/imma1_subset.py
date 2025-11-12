@@ -438,7 +438,7 @@ def get_file_dates(bdate, edate):
    if TSPLIT > 1:
       dstep = int(PgUtil.diffdate(edate, bdate)/TSPLIT)
       if dstep > 2:
-         mdate = PgUitl.adddate(bdate, 0, 0, dstep)
+         mdate = PgUtil.adddate(bdate, 0, 0, dstep)
          while PgUtil.diffdate(edate, mdate) > 2:
             fdates[-1][1] = mdate
             bdate = PgUitl.adddate(mdate, 0, 0, 1)
@@ -675,6 +675,8 @@ def build_final_files(ridx, rstr):
 # process reqest info, create command file and the input file list
 #
 def get_subset_info(rstr):
+
+   global TSPLIT
 
    rinfo = PGRQST['rinfo'] if PGRQST['rinfo'] else PGRQST['note']
    cnt = 0
