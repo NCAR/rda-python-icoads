@@ -441,9 +441,9 @@ def get_file_dates(bdate, edate):
          mdate = PgUtil.adddate(bdate, 0, 0, dstep)
          while PgUtil.diffdate(edate, mdate) > 2:
             fdates[-1][1] = mdate
-            bdate = PgUitl.adddate(mdate, 0, 0, 1)
+            bdate = PgUtil.adddate(mdate, 0, 0, 1)
             fdates.append([bdate, edate])
-            mdate = PgUitl.adddate(bdate, 0, 0, dstep)
+            mdate = PgUtil.adddate(bdate, 0, 0, dstep)
    return fdates
 
 #
