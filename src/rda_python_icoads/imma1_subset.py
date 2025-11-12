@@ -93,6 +93,7 @@ OPTATTMS = {
 PGRQST = PGFILE = None
 pgcmd = 'imma1_subset'
 PSTEP = 32
+TSPLIT = 1
 
 #
 # main function to run dsarch
@@ -412,21 +413,38 @@ def process_subset_request(ridx, rdir, rstr):
       PgFile.change_local_directory(rdir, PgLOG.LOGWRN)
       fcnt = build_final_files(ridx, rstr)
    else:
-      fcnt = get_table_info(PVALS['dates'])
-      for i in range(fcnt):
-         bdate = PVALS['bdate'][i]
-         edate = PVALS['edate'][i]
+      fcnt = 0
+      tcnt = get_table_info(PVALS['dates'])
+      for i in range(tcnt):
          tidx = PVALS['tidx'][i]
-         pgrec = {}
-         pgrec['data_format'] = 'ASCII'
-         pgrec['disp_order'] = i+1
-         pgrec['command'] = pgcmd + " -f -FI"
-         pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
-         fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate.replace('-', ''), edate.replace('-', ''))
-         PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
+         fdates = get_file_dates(PVALS['bdate'][i], PVALS['edate'][i])
+         for dates in fdates:
+            bdate = dates[0]
+            edate = dates[1]
+            pgrec = {'data_format' : 'ASCII'}
+            fcnt + 1
+            pgrec['disp_order'] = fcnt
+            pgrec['command'] = pgcmd + " -f -FI"
+            pgrec['cmd_detail'] = "dates={} {}&tidx={}".format(bdate, edate, tidx)
+            fname = "ICOADS_R3.0_Rqst{}_{}-{}.csv".format(ridx, bdate.replace('-', ''), edate.replace('-', ''))
+            PgSubset.add_request_file(ridx, fname, pgrec, PgLOG.LGEREX)
 
    record = {'fcount' : fcnt}
    PgDBI.pgupdt('dsrqst', record, "rindex = {}".format(ridx))
+
+def get_file_dates(bdate, edate):
+
+   fdates = [[bdate, edate]]
+   if TSPLIT > 1:
+      dstep = int(PgUtil.diffdate(edate, bdate)/TSPLIT)
+      if dstep > 2:
+         mdate = PgUtil.adddate(bdate, 0, 0, dstep)
+         while PgUtil.diffdate(edate, mdate) > 2:
+            fdates[-1][1] = mdate
+            bdate = PgUtil.adddate(mdate, 0, 0, 1)
+            fdates.append([bdate, edate])
+            mdate = PgUtil.adddate(bdate, 0, 0, dstep)
+   return fdates
 
 #
 # process a validated subset request file
@@ -658,6 +676,8 @@ def build_final_files(ridx, rstr):
 #
 def get_subset_info(rstr):
 
+   global TSPLIT
+
    rinfo = PGRQST['rinfo'] if PGRQST['rinfo'] else PGRQST['note']
    cnt = 0
    for line in rinfo.split("&"):
@@ -703,6 +723,10 @@ def get_subset_info(rstr):
          FSSRCS['iivad'] = pstring.split(', ')
 
    if cnt < 5: PgLOG.pglog(rstr + ": Incomplete request control information", PgLOG.LGEREX)
+
+   if PVALS['iopts'] > 1: TSPLIT *= 2
+   if (PVALS['lats'][1] - PVALS['lats'][0]) > 90.0: TSPLIT *= 2
+   if (PVALS['lons'][1] - PVALS['lons'][0]) > 180.0: TSPLIT *= 2
 
 #
 # write a HTML readme file, and convert it to PDF format
