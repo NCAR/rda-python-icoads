@@ -7,6 +7,7 @@
 #      Date : 12/30/2020
 #             2025-03-03 transferred to package rda_python_icoads from
 #             https://github.com/NCAR/rda-icoads.git
+#             2026-09-04 convert to class CountIcoads
 #   Purpose : read ICOADS data from IVADDB and count out daily, monthly or year records
 #             by attms
 #
@@ -16,138 +17,139 @@
 
 import sys
 import re
-from rda_python_common import PgLOG
-from rda_python_common import PgDBI
-from rda_python_common import PgUtil
-from . import PgIMMA
+from .pg_imma import PgIMMA
 
-PVALS = {
-   'bdate' : None,
-   'edate' : None,
-   'bpdate' : [],
-   'epdate' : [],
-   'period' : [],
-   'group' : None,
-   'names' : None
-}
+class CountIcoads(PgIMMA):
 
-#
-# main function to run dsarch
-#
-def main():
+   def __init__(self):
+      super().__init__()
+      self.PVALS = {
+         'bdate' : None,
+         'edate' : None,
+         'bpdate' : [],
+         'epdate' : [],
+         'period' : [],
+         'group' : None,
+         'names' : None
+      }
 
-   option = ''
-   argv = sys.argv[1:]
-   for arg in argv:
-      if arg == "-b":
-         PgLOG.PGLOG['BCKGRND'] = 1
-      elif arg == "-g":
-         option = 'g'
-      elif re.match(r'^-', arg):
-         PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
-      elif option:
-         PVALS['group'] = arg
-         option = ''
-      elif not PVALS['bdate']:
-         PVALS['bdate'] = arg
-      elif not PVALS['edate']:
-         PVALS['edate'] = arg
-      else:
-         PgLOG.pglog(arg + ": Invalid parameter", PgLOG.LGWNEX)
-   
-   PgDBI.ivaddb_dbname()
-   if not (PVALS['bdate'] and PVALS['edate'] and re.match(r'^(daily|monthly|yearly)$', PVALS['group'])):
-      pgrec = PgDBI.pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', PgLOG.LGEREX)
-      print("Usage: counticoads -g GroupBy (daily|monthly|yearly) BeginDate EndDate")
-      print("   Group by Daily, Monthly or Yearly is mandatory")
-      print("   Set BeginDate and EndDate between '{} and '{}'".format(pgrec['bdate'], pgrec['edate']))
+   #
+   # main function to run dsarch
+   #
+   def main(self):
+
+      option = ''
+      argv = sys.argv[1:]
+      for arg in argv:
+         if arg == "-b":
+            self.PGLOG['BCKGRND'] = 1
+         elif arg == "-g":
+            option = 'g'
+         elif re.match(r'^-', arg):
+            self.pglog(arg + ": Invalid Option", self.LGWNEX)
+         elif option:
+            self.PVALS['group'] = arg
+            option = ''
+         elif not self.PVALS['bdate']:
+            self.PVALS['bdate'] = arg
+         elif not self.PVALS['edate']:
+            self.PVALS['edate'] = arg
+         else:
+            self.pglog(arg + ": Invalid parameter", self.LGWNEX)
+
+      self.ivaddb_dbname()
+      if not (self.PVALS['bdate'] and self.PVALS['edate'] and re.match(r'^(daily|monthly|yearly)$', self.PVALS['group'])):
+         pgrec = self.pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', self.LGEREX)
+         print("Usage: counticoads -g GroupBy (daily|monthly|yearly) BeginDate EndDate")
+         print("   Group by Daily, Monthly or Yearly is mandatory")
+         print("   Set BeginDate and EndDate between '{} and '{}'".format(pgrec['bdate'], pgrec['edate']))
+         sys.exit(0)
+
+      if self.diffdate(self.PVALS['bdate'], self.PVALS['edate']) > 0:
+         tmpdate = self.PVALS['bdate']
+         self.PVALS['bdate'] = self.PVALS['edate']
+         self.PVALS['edate'] = tmpdate
+
+      self.PGLOG['LOGFILE'] = "icoads.log"
+      self.cmdlog("counticoads {}".format(' '.format(argv)))
+      self.PVALS['names'] = '/'.join(self.IMMA_NAMES)
+      fname = "ICOADS_COUNTS_{}_{}-{}.txt" .format(self.PVALS['group'].upper(), self.PVALS['bdate'], self.PVALS['edate'])
+      IMMA = open(fname, 'w')
+      IMMA.write("{}, {}\n".format(self.PVALS['group'], ', '.join(self.IMMA_NAMES)))
+      self.count_imma_data(IMMA)
+      IMMA.close()
+
+      self.cmdlog()
       sys.exit(0)
-   
-   if PgUtil.diffdate(PVALS['bdate'], PVALS['edate']) > 0:
-      tmpdate = PVALS['bdate']
-      PVALS['bdate'] = PVALS['edate']
-      PVALS['edate'] = tmpdate
 
-   PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   PgLOG.cmdlog("counticoads {}".format(' '.format(argv)))
-   PVALS['names'] = '/'.join(PgIMMA.IMMA_NAMES)
-   fname = "ICOADS_COUNTS_{}_{}-{}.txt" .format(PVALS['group'].upper(), PVALS['bdate'], PVALS['edate'])
-   IMMA = open(fname, 'w')
-   IMMA.write("{}, {}\n".format(PVALS['group'], ', '.join(PgIMMA.IMMA_NAMES)))
-   count_imma_data(IMMA)
-   IMMA.close()
+   #
+   # count imaa data
+   #
+   def count_imma_data(self, IMMA):
 
-   PgLOG.cmdlog()
-   sys.exit(0)
+      pcnt = self.init_periods()
+      tcounts = [0]*self.TABLECOUNT
 
-#
-# count imaa data
-#
-def count_imma_data(IMMA):
+      for pidx in range(pcnt):
+         acnts = self.count_period_imma(pidx)
+         IMMA.write("{}' {}\n".format(self.PVALS['period'][pidx], ', '.join(acnts)))
+         for i in range(self.TABLECOUNT): tcounts[i] += acnts[i]
 
-   pcnt = init_periods()
-   tcounts = [0]*PgIMMA.TABLECOUNT
+      if pcnt > 1:
+         IMMA.write("Total, {}\n".format(', '.join(tcounts)))
+         self.pglog("{}({}) for {} {} periods".format('/'.join(tcounts), self.PVALS['names'], pcnt, self.PVALS['group']), self.LOGWRN)
 
-   for pidx in range(pcnt):
-      acnts = count_period_imma(pidx)
-      IMMA.write("{}' {}\n".format(PVALS['period'][pidx], ', '.join(acnts)))
-      for i in range(PgIMMA.TABLECOUNT): tcounts[i] += acnts[i]
+   #
+   # read icoads record from given file name and save them into RDADB
+   #
+   def count_period_imma(self, pidx):
 
-   if pcnt > 1:
-      IMMA.write("Total, {}\n".format(', '.join(tcounts)))
-      PgLOG.pglog("{}({}) for {} {} periods".format('/'.join(tcounts), PVALS['names'], pcnt, PVALS['group']), PgLOG.LOGWRN)
+      self.pglog("count IMMA1 records for {} period {} from IVADDB".format(self.PVALS['group'], self.PVALS['period'][pidx]), self.WARNLG)
+      acounts = [0]*self.TABLECOUNT
+      date = self.PVALS['bpdate'][pidx]
+      while date <= self.PVALS['epdate'][pidx]:
+         acnts = self.count_imma_records(date)
+         if acnts:
+            for i in range(self.TABLECOUNT): acounts[i] += acnts[i]
+         date = self.adddate(date, 0, 0, 1)
 
+      self.pglog("{}({}) for {} period {}".format('/'.join(acounts), self.PVALS['names'], self.PVALS['group'], self.PVALS['period'][pidx]), self.LOGWRN)
+      return acounts
 
+   #
+   # initialize (daily|monthly|yearly) periods
+   #
+   def init_periods(self):
 
-#
-# read icoads record from given file name and save them into RDADB
-#
-def count_period_imma(pidx):
+      bdate = self.PVALS['bdate']
+      if self.PVALS['group'] == "yearly":
+         dfmt = "YYYY"
+         eflg = "Y"
+      elif self.PVALS['group'] == 'monthly':
+         dfmt = "YYYY-MM"
+         eflg = "M"
+      else:  # must be daily
+         dfmt = "YYYY-MM-DD"
+         eflg = ""
 
-   PgLOG.pglog("count IMMA1 records for {} period {} from IVADDB".format(PVALS['group'], PVALS['period'][pidx]), PgLOG.WARNLG)
-   acounts = [0]*PgIMMA.TABLECOUNT
-   date = PVALS['bpdate'][pidx]
-   while date <= PVALS['epdate'][pidx]:
-      acnts = PgIMMA.count_imma_records(date)
-      if acnts:
-         for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
-      date = PgUtil.adddate(date, 0, 0, 1)
+      pcnt = 0
+      while True:
+         pcnt += 1
+         self.PVALS['bpdate'].append(bdate)
+         self.PVALS['period'].append(self.format_date(bdate, dfmt))
+         edate = self.enddate(bdate, 0, eflg) if eflg else bdate
+         if self.diffdate(self.PVALS['edate'], edate) > 0:
+            self.PVALS['epdate'].append(edate)
+            bdate = self.adddate(edate, 0, 0, 1)
+         else:
+            self.PVALS['epdate'].append(self.PVALS['edate'])
+            break
 
-   PgLOG.pglog("{}({}) for {} period {}".format('/'.join(acounts), PVALS['names'], PVALS['group'], PVALS['period'][pidx]), PgLOG.LOGWRN)
-   return acounts
+      return pcnt
 
-#
-# initialize (daily|monthly|yearly) periods
-#
-def init_periods():
+# main function to execute this script
+def main():
+   CountIcoads().main()
 
-   bdate = PVALS['bdate']
-   if PVALS['group'] == "yearly":
-      dfmt = "YYYY"
-      eflg = "Y"
-   elif PVALS['group'] == 'monthly':
-      dfmt = "YYYY-MM"
-      eflg = "M"
-   else:  # must be daily
-      dfmt = "YYYY-MM-DD"
-      eflg = ""
-
-   pcnt = 0
-   while True:
-      pcnt += 1
-      PVALS['bpdate'].append(bdate)
-      PVALS['period'].append(PgUtil.format_date(bdate, dfmt))
-      edate = PgUtil.enddate(bdate, 0, eflg) if eflg else bdate
-      if PgUtil.diffdate(PVALS['edate'], edate) > 0:
-         PVALS['epdate'].append(edate)
-         bdate = PgUtil.adddate(edate, 0, 0, 1)
-      else:
-         PVALS['epdate'].append(PVALS['edate'])
-         break
-
-   return pcnt
-
-#
 # call main() to start program
-#
 if __name__ == "__main__": main()
