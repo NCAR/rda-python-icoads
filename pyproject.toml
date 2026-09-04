@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rda_python_icoads"
-version = "1.0.19"
+version = "3.0.0"
 authors = [
   { name="Zaihua Ji", email="zji@ucar.edu" },
 ]
@@ -20,7 +20,8 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
 ]
 dependencies = [
-  "rda_python_common",
+  "rda_python_common>=3.0.14",
+  "rda_python_dsrqst>=2.0.4",
 ]
 
 [tool.setuptools]
@@ -55,7 +56,7 @@ where = ["src"]
 "fillinventory" = "rda_python_icoads.fillinventory:main"
 "fillitable" = "rda_python_icoads.fillitable:main"
 "fillmonth" = "rda_python_icoads.fillmonth:main"
-"fixidx" = "rda_python_icoads.fixidx:main"
+"fixiidx" = "rda_python_icoads.fixiidx:main"
 "msg_download" = "rda_python_icoads.msg_download:main"
 "maxsst" = "rda_python_icoads.maxsst:main"
 "writeicoads" = "rda_python_icoads.writeicoads:main"

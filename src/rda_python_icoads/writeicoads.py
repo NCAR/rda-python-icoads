@@ -7,6 +7,7 @@
 #      Date : 01/05/2021
 #             2025-03-03 transferred to package rda_python_icoads from
 #             https://github.com/NCAR/rda-icoads.git
+#             2026-09-04 convert to class WriteIcoads
 #   Purpose : read ICOADS data from IVADDB and write out monthly files in IMMA format
 #
 #    Github : https://github.com/NCAR/rda-python-icoads.git
@@ -17,153 +18,154 @@ import sys
 import os
 import re
 from os import path as op
-from rda_python_common import PgLOG
-from rda_python_common import PgDBI
-from rda_python_common import PgSIG
-from rda_python_common import PgUtil
-from rda_python_common import PgFile
-from . import PgIMMA
+from .pg_imma import PgIMMA
 
-PVALS = {
-   'bdate' : None,
-   'edate' : None,
-   'month' : [],
-   'bmdate' : [],
-   'emdate' : [],
-   'fnroot' : "IMMA1_R3.0.0",
-   'names' : None,
-   'mporc' : 10,
-   'dumpall' : 0
-}
+class WriteIcoads(PgIMMA):
 
-#
-# main function to run dsarch
-#
-def main():
+   def __init__(self):
+      super().__init__()
+      self.PVALS = {
+         'bdate' : None,
+         'edate' : None,
+         'month' : [],
+         'bmdate' : [],
+         'emdate' : [],
+         'fnroot' : "IMMA1_R3.0.0",
+         'names' : None,
+         'mporc' : 10,
+         'dumpall' : 0
+      }
 
-   option = ''
-   argv = sys.argv[1:]
-   
-   for arg in argv:
-      if arg == "-b":
-         PgLOG.PGLOG['BCKGRND'] = 1
-      elif arg == "-a":
-         PVALS['dumpall'] = 1
-      elif arg == "-f":
-         option = 'f'
-      elif arg == "-m":
-         option = 'm'
-      elif re.match(r'^-', arg):
-        PgLOG.pglog(arg + ": Invalid Option", PgLOG.LGWNEX)
-      elif option:
-         if option == 'f':
-           PVALS['fnroot'] = arg
-         elif option == 'm':
-            PVALS['mproc'] = arg
-         option = ''
-      elif not PVALS['bdate']:
-         PVALS['bdate'] = arg
-      elif not PVALS['edate']:
-         PVALS['edate'] = arg
-      else:
-        PgLOG.pglog(arg + ": Invalid parameter", PgLOG.LGWNEX)
+   #
+   # main function to run dsarch
+   #
+   def main(self):
 
-   PgDBI.ivaddb_dbname()
-   
-   if not (PVALS['bdate'] and PVALS['edate']):
-      pgrec = PgDBI.pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', PgLOG.LGEREX)
-      print("Usage: writeicoads [-a] [-m mproc] [-f RootFileName] BeginDate EndDate")
-      print("   Default RootFileName = {}".format(PVALS['fnroot']))
-      print("   Option -a - dump all attms, including multi-line ones, such as IVAD and REANQC")
-      print("   Option -m - start up to given number of processes, one for each file dump (Default to 10)")
-      print("   Set BeginDate and EndDate between '{}' and '{}'".format(pgrec['bdate'], pgrec['edate']))
+      option = ''
+      argv = sys.argv[1:]
+
+      for arg in argv:
+         if arg == "-b":
+            self.PGLOG['BCKGRND'] = 1
+         elif arg == "-a":
+            self.PVALS['dumpall'] = 1
+         elif arg == "-f":
+            option = 'f'
+         elif arg == "-m":
+            option = 'm'
+         elif re.match(r'^-', arg):
+           self.pglog(arg + ": Invalid Option", self.LGWNEX)
+         elif option:
+            if option == 'f':
+              self.PVALS['fnroot'] = arg
+            elif option == 'm':
+               self.PVALS['mproc'] = arg
+            option = ''
+         elif not self.PVALS['bdate']:
+            self.PVALS['bdate'] = arg
+         elif not self.PVALS['edate']:
+            self.PVALS['edate'] = arg
+         else:
+           self.pglog(arg + ": Invalid parameter", self.LGWNEX)
+
+      self.ivaddb_dbname()
+
+      if not (self.PVALS['bdate'] and self.PVALS['edate']):
+         pgrec = self.pgget("cntldb.inventory", "min(date) bdate, max(date) edate", '', self.LGEREX)
+         print("Usage: writeicoads [-a] [-m mproc] [-f RootFileName] BeginDate EndDate")
+         print("   Default RootFileName = {}".format(self.PVALS['fnroot']))
+         print("   Option -a - dump all attms, including multi-line ones, such as IVAD and REANQC")
+         print("   Option -m - start up to given number of processes, one for each file dump (Default to 10)")
+         print("   Set BeginDate and EndDate between '{}' and '{}'".format(pgrec['bdate'], pgrec['edate']))
+         sys.exit(0)
+
+      if self.diffdate(self.PVALS['bdate'], self.PVALS['edate']) > 0:
+         tmpdate = self.PVALS['bdate']
+         self.PVALS['bdate'] = self.PVALS['edate']
+         self.PVALS['edate'] = tmpdate
+
+      self.PGLOG['LOGFILE'] = "icoads.log"
+      self.cmdlog("writeicoads {}".format(' '.join(argv)))
+      self.PVALS['names'] = '/'.join(self.IMMA_NAMES)
+      self.write_imma_data()
+      self.cmdlog()
       sys.exit(0)
 
-   if PgUtil.diffdate(PVALS['bdate'], PVALS['edate']) > 0:
-      tmpdate = PVALS['bdate']
-      PVALS['bdate'] = PVALS['edate']
-      PVALS['edate'] = tmpdate
-   
-   PgLOG.PGLOG['LOGFILE'] = "icoads.log"
-   PgLOG.cmdlog("writeicoads {}".format(' '.join(argv)))
-   PVALS['names'] = '/'.join(PgIMMA.IMMA_NAMES)
-   write_imma_data()
-   PgLOG.cmdlog()
-   sys.exit(0)
+   #
+   # read imma data from IVADB and dump into files
+   #
+   def write_imma_data(self):
 
-#
-# read imma data from IVADB and dump into files
-#
-def write_imma_data():
-   
-   mcnt = init_months()
+      mcnt = self.init_months()
 
-   if mcnt == 1: PVALS['mproc'] = 1
-   if PVALS['mproc'] > 1: PgSIG.start_none_daemon('writeicoads', '', PgLOG.PGLOG['CURUID'], PVALS['mproc'], 300, 1)
+      if mcnt == 1: self.PVALS['mproc'] = 1
+      if self.PVALS['mproc'] > 1: self.start_none_daemon('writeicoads', '', self.PGLOG['CURUID'], self.PVALS['mproc'], 300, 1)
 
-   for midx in range(mcnt):
-      if PVALS['mproc'] > 1:
-         stat = PgSIG.start_child("writeicoads_{}".format(midx), PgLOG.LOGWRN, 1)  # try to start a child process
-         if stat <= 0:
-            sys.exit(1)   # something wrong
-         elif PgSIG.PGSIG['PPID'] > 1:
-            write_monthly_imma_file(midx)
-            sys.exit(0)  # stop child process
+      for midx in range(mcnt):
+         if self.PVALS['mproc'] > 1:
+            stat = self.start_child("writeicoads_{}".format(midx), self.LOGWRN, 1)  # try to start a child process
+            if stat <= 0:
+               sys.exit(1)   # something wrong
+            elif self.PGSIG['PPID'] > 1:
+               self.write_monthly_imma_file(midx)
+               sys.exit(0)  # stop child process
+            else:
+               self.pgdisconnect(0)  # disconnect database for reconnection
+               continue  # continue for next midx
          else:
-            PgDBI.pgdisconnect(0)  # disconnect database for reconnection
-            continue  # continue for next midx
-      else:
-         write_monthly_imma_file(midx)
+            self.write_monthly_imma_file(midx)
 
-   if PVALS['mproc'] > 1: # quit parent without waiting
-      PgLOG.pglog("Started {} child processes to write icoads files".format(mcnt), PgLOG.LOGWRN)
+      if self.PVALS['mproc'] > 1: # quit parent without waiting
+         self.pglog("Started {} child processes to write icoads files".format(mcnt), self.LOGWRN)
 
-#
-# read icoads record from given file name and save them into RDADB
-#
-def write_monthly_imma_file(midx):
+   #
+   # read icoads record from given file name and save them into RDADB
+   #
+   def write_monthly_imma_file(self, midx):
 
-   fname = "{}_{}".format(PVALS['fnroot'], PVALS['month'][midx])
-   PgLOG.pglog("write IMMA1 records into File '{}' from IVADDB".format(fname), PgLOG.WARNLG)
-   opened = 0
-   acounts = [0]*PgIMMA.TABLECOUNT
-   IMMA = open(fname, 'w')
-   cdate = PVALS['bmdate'][midx]
-   while cdate <= PVALS['emdate'][midx]:
-      acnts = PgIMMA.write_imma_records(IMMA, cdate, 0, PVALS['dumpall'])
-      if acnts:
-         for i in range(PgIMMA.TABLECOUNT): acounts[i] += acnts[i]
-      cdate = PgUtil.adddate(cdate, 0, 0, 1)
+      fname = "{}_{}".format(self.PVALS['fnroot'], self.PVALS['month'][midx])
+      self.pglog("write IMMA1 records into File '{}' from IVADDB".format(fname), self.WARNLG)
+      opened = 0
+      acounts = [0]*self.TABLECOUNT
+      IMMA = open(fname, 'w')
+      cdate = self.PVALS['bmdate'][midx]
+      while cdate <= self.PVALS['emdate'][midx]:
+         acnts = self.write_imma_records(IMMA, cdate, 0, self.PVALS['dumpall'])
+         if acnts:
+            for i in range(self.TABLECOUNT): acounts[i] += acnts[i]
+         cdate = self.adddate(cdate, 0, 0, 1)
 
-   IMMA.close()
-   if acounts[0] == 0: PgFile.delete_local_file(fname)
+      IMMA.close()
+      if acounts[0] == 0: self.delete_local_file(fname)
 
-   PgLOG.pglog("{}({}) written into {}".format('/'.join(map(str, acounts)), PVALS['names'], fname), PgLOG.LOGWRN)
+      self.pglog("{}({}) written into {}".format('/'.join(map(str, acounts)), self.PVALS['names'], fname), self.LOGWRN)
 
-#
-# intialize month arrays
-#
-def init_months():
+   #
+   # intialize month arrays
+   #
+   def init_months(self):
 
-   bdate = PVALS['bdate']
-   table = "cntldb.inventory"
-   mcnt = done = 0
-   while True:
-      edate = PgUtil.enddate(bdate, 0, 'M')
-      if PgUtil.diffdate(PVALS['edate'], edate) <= 0:
-         edate = PVALS['edate']
-         done = 1
-      if PgDBI.pgget(table, "date", "date BETWEEN '{}' AND '{}'".format(bdate, edate), PgLOG.LGEREX):
-         PVALS['bmdate'].append(bdate)
-         PVALS['month'].append(PgUtil.format_date(bdate, "YYYY-MM"))
-         PVALS['emdate'].append(edate)
-         mcnt += 1
-      if done: break
-      bdate = PgUtil.adddate(edate, 0, 0, 1)
+      bdate = self.PVALS['bdate']
+      table = "cntldb.inventory"
+      mcnt = done = 0
+      while True:
+         edate = self.enddate(bdate, 0, 'M')
+         if self.diffdate(self.PVALS['edate'], edate) <= 0:
+            edate = self.PVALS['edate']
+            done = 1
+         if self.pgget(table, "date", "date BETWEEN '{}' AND '{}'".format(bdate, edate), self.LGEREX):
+            self.PVALS['bmdate'].append(bdate)
+            self.PVALS['month'].append(self.format_date(bdate, "YYYY-MM"))
+            self.PVALS['emdate'].append(edate)
+            mcnt += 1
+         if done: break
+         bdate = self.adddate(edate, 0, 0, 1)
 
-   return mcnt
+      return mcnt
 
-#
+# main function to execute this script
+def main():
+   WriteIcoads().main()
+
 # call main() to start program
-#
 if __name__ == "__main__": main()
