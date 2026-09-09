@@ -233,11 +233,15 @@ class FillItable(PgIMMA):
             else:
                self.pglog("{}({}): index counted already between {} and {}".format(var, val, pgrec['imin'], pgrec['imax']), self.LOGWRN)
 
-      cnt = 0
+      cnt = ncnt = 0
       for val in records:
          pgrec = records[val]
+         if not pgrec:
+            ncnt += 1   # counted already; nothing to add
+            continue
          cnt += self.pgupdt(vtable, pgrec, "{} = {}".format(var, val), self.LGEREX)
 
+      if ncnt: self.pglog("{}: nothing to add for {} values counted already".format(vtable, ncnt), self.LOGWRN)
       self.pglog("{} of {} values recounted in table '{}'".format(cnt, vcnt, vtable), self.LOGWRN)
 
    #
