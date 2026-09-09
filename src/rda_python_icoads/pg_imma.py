@@ -375,7 +375,7 @@ class PgIMMA(PgOPT):
          self.UIDOFFSET = 4
          self.UIDLENGTH = 15
          atti = line[15:17]
-         CURRN3 = int(line[12])
+         self.CURRN3 = int(line[12])
       else:
          atti = None
 
@@ -622,7 +622,27 @@ class PgIMMA(PgOPT):
    #
    # add multiple imma records into different tables in RDADB
    #
+   # all writes for one date are wrapped in a single transaction, so an interrupted
+   # fill can never leave an inventory record behind without its data; the date is
+   # then simply refilled when the file is processed again
+   #
    def add_imma_records(self, cdate, records):
+
+      self.starttran()
+      try:
+         acnts = self.add_date_records(cdate, records)
+      except BaseException:
+         self.aborttran()
+         self.pglog("{}: records rolled back for the date".format(cdate), self.LOGWRN)
+         raise
+      self.endtran()
+
+      return acnts
+
+   #
+   # add all records of one date into the attm and the control tables
+   #
+   def add_date_records(self, cdate, records):
 
       if self.INVENTORY and self.IMMA_NAMES[0] in records:   # add counting record into inventory table
          rcnt = len(records[self.IMMA_NAMES[0]]['iidx'])
