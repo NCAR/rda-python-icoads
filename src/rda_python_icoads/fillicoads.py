@@ -29,8 +29,7 @@ class FillIcoads(PgIMMA):
          'names' : None,
          'files' : [],
          'dates' : [],
-         'dtlen' : 0,
-         'zipped' : 0
+         'dtlen' : 0
       }
 
    #
@@ -112,12 +111,6 @@ class FillIcoads(PgIMMA):
       fcnt = 0
       tcounts = [0]*self.TABLECOUNT
       for file in self.PVALS['files']:
-         pfile = self.get_partial_month_file(file) if addinventory else None
-         if pfile:
-            fcnt += 1
-            acnts = self.process_imma_file(pfile, addinventory)
-            for i in range(self.TABLECOUNT): tcounts[i] += acnts[i]
-            if self.PVALS['zipped']: self.pgsystem("gzip " + pfile, self.LOGWRN, 5)
          fcnt += 1
          acnts = self.process_imma_file(file, addinventory)
          for i in range(self.TABLECOUNT): tcounts[i] += acnts[i]
@@ -152,49 +145,21 @@ class FillIcoads(PgIMMA):
       return self.format_date(pgrec['mdate']) if pgrec and pgrec['mdate'] else None
 
    #
-   # locate a data file, gunzip it if only the gzipped one is on file
+   # the iidx values are allocated sequentially, so no date can be filled while an earlier one is
+   # still missing; a month must be filled up before the next month is filled, and a month cannot
+   # be skipped; months are sequenced by fillmonth, this only guards a direct call
    #
-   def locate_imma_file(self, fname):
-
-      self.PVALS['zipped'] = 0
-      if op.isfile(fname): return fname
-
-      zfile = fname + ".gz"
-      if op.isfile(zfile):
-         self.pgsystem("gunzip " + zfile, self.LOGWRN, 5)
-         if op.isfile(fname):
-            self.PVALS['zipped'] = 1
-            return fname
-
-      return None
-
-   #
-   # a month is filled up only if its last day is in the inventory; if an earlier month is
-   # filled partially, return the name of its data file, to fill up the missing dates before
-   # the given file is filled
-   #
-   def get_partial_month_file(self, fname):
+   def check_fill_order(self, fdate):
 
       mdate = self.get_max_filled_date()
-      if not mdate: return None   # nothing filled yet
+      if not mdate: return                              # nothing filled yet
+      if self.diffdate(mdate, fdate) >= 0: return       # the file holds filled dates already
 
-      edate = self.enddate(mdate, 0, 'M')
-      if mdate == edate: return None   # the latest filled month is filled up
+      rdate = self.adddate(mdate, 0, 0, 1)              # the first missing date
+      if self.diffdate(fdate[0:7] + "-01", rdate) <= 0: return   # the file covers it
 
-      fdate = self.get_imma_file_date(fname)
-      if not fdate or self.diffdate(fdate, edate) <= 0: return None   # the given file holds the partial month
-
-      pgrec = self.pgget(f"{self.CNTLSC}.inventory", "fname", "date = '{}'".format(mdate), self.LGEREX)
-      pfile = self.locate_imma_file(pgrec['fname']) if pgrec and pgrec['fname'] else None
-      if not pfile:
-         self.pglog("{}: month is filled through {} only, and its data file is not found in {} to "
-                    "fill it up before filling {}".format(mdate[0:7], mdate, op.abspath('.'), fdate[0:7]), self.LGEREX)
-
-      # the leading '>' propagates the note up through the calling processes, into the email report
-      self.pglog("> {}: filled through {} only, fill it up from {} before filling {}".format(
-                 mdate[0:7], mdate, pfile, fdate[0:7]), self.LOGWRN)
-
-      return pfile
+      self.pglog("{}: filled through {} only, fill from {} before filling {}".format(
+                 mdate[0:7], mdate, rdate, fdate[0:7]), self.LGEREX)
 
    #
    # skip the dates that are filled already if the month of the given file is resumed
@@ -245,7 +210,9 @@ class FillIcoads(PgIMMA):
       edate = self.PVALS['dates'][1] if self.PVALS['dtlen'] > 1 else None
 
       fdate = self.get_imma_file_date(fname) if iname else None
-      if fdate: bdate = self.get_resume_date(fname, fdate, bdate)
+      if fdate:
+         if self.PVALS['dtlen'] == 0: self.check_fill_order(fdate)
+         bdate = self.get_resume_date(fname, fdate, bdate)
 
       IMMA = open(fname, 'r', encoding = 'latin_1')
 
