@@ -24,7 +24,7 @@ class FillMonth(PgUtil):
    def __init__(self):
       super().__init__()
       self.CMDS = {
-         'filename' : "IMMA1_R3.0.2_",
+         'filenames' : ["IMMA1_R3.0.2_", "IMMA1_R3.0.3_"],   # IMMA1_R3.0.3_ since 2025-08
          'fillicoads' : "fillicoads -i ",
          'fillitable' : "fillitable -t -v dck pt sid -r ",
          'cdmsmonth' : "cdmsmonth "
@@ -65,16 +65,30 @@ class FillMonth(PgUtil):
       sys.exit(0)
 
    #
+   # locate the monthly IMMA1 file, gunzip it if only the gzipped one is on file
+   #
+   def get_monthly_file(self, smonth):
+
+      files = [fname + smonth for fname in self.CMDS['filenames']]
+
+      for file in files:
+         if op.isfile(file): return file
+
+      for file in files:
+         zfile = file + ".gz"
+         if op.isfile(zfile):
+            self.pgsystem("gunzip " + zfile, self.LGEREX, 5)
+            return file
+
+      self.pglog("Miss monthly IMMA1 file, gzipped or not, in {}: {}".format(
+                 op.abspath('.'), ', '.join(files)), self.LGEREX)
+
+   #
    # fill monthly IMMA1 data to IVADDB
    #
    def fill_monthly_data(self, smonth, srange):
 
-      file = self.CMDS['filename'] + smonth
-
-      if not op.isfile(file):
-         # unzip file
-         cmd = "gunzip {}.gz".format(file)
-         self.pgsystem(cmd, self.LGWNEX, 5)
+      file = self.get_monthly_file(smonth)
 
       # fillicoads
       cmd = self.CMDS['fillicoads'] + file
